@@ -1,0 +1,57 @@
+{
+    "name": "aliziodev/laravel-indonesia-regions",
+    "description": "Laravel package for Indonesia regions selection with postal codes | Package Laravel untuk pemilihan wilayah Indonesia lengkap dengan kode pos",
+    "keywords": [
+        "laravel",
+        "indonesia",
+        "regions",
+        "wilayah",
+        "provinsi",
+        "kabupaten",
+        "kecamatan",
+        "desa",
+        "kelurahan",
+        "kodepos",
+        "postal-code",
+        "indonesia-regions"
+    ],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Aliziodev",
+            "email": "aliziodev@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^11.0|^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Aliziodev\\IndonesiaRegions\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Aliziodev\\IndonesiaRegions\\IndonesiaRegionsServiceProvider"
+            ],
+            "aliases": {
+                "Indonesia": "Aliziodev\\IndonesiaRegions\\Facades\\Indonesia"
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "funding": [
+        {
+            "type": "github",
+            "url": "https://github.com/sponsors/aliziodev"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/aliziodev/laravel-indonesia-regions/issues",
+        "source": "https://github.com/aliziodev/laravel-indonesia-regions"
+    }
+}
