@@ -101,6 +101,15 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
         });
     }
 
+    /**
+     * Search for regions by name or postal code
+     * 
+     * @param string $term Search term (region name or postal code)
+     * @param string|null $type Region type filter (province, city, district, village)
+     * @param int|null $perPage Items per page for pagination
+     * @param array|null $columns Columns to retrieve
+     * @return \Illuminate\Support\Collection|\Illuminate\Pagination\LengthAwarePaginator
+     */
     public function search(string $term, ?string $type = null, ?int $perPage = null, ?array $columns = null): Collection|LengthAwarePaginator
     {
         // Only cache if not paginated
@@ -126,7 +135,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
      * @param int|null $perPage Items per page for pagination
      * @param array|null $columns Columns to retrieve
      * @return Collection|LengthAwarePaginator
-     */ 
+     */
     protected function performSearch(string $term, ?string $type = null, ?int $perPage = null, ?array $columns = null): Collection|LengthAwarePaginator
     {
         $columns = $this->resolveColumns($columns);
