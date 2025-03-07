@@ -17,6 +17,7 @@ Package Laravel untuk data wilayah Indonesia lengkap dengan kode pos. Package in
 -   Facade untuk penggunaan yang mudah
 -   Support untuk Laravel 11.x dan 12.x
 -   Pencarian wilayah
+-   Pencarian dengan alamat lengkap
 -   Hirarki/Info wilayah
 -   Format untuk dropdown/select
 -   Pagination support
@@ -156,6 +157,46 @@ $results = Indonesia::search(
 // Response dengan pagination sama dengan format getRegions()
 ```
 
+### Pencarian dengan Alamat Lengkap (searchWithAddress)
+
+```php
+use Aliziodev\IndonesiaRegions\Facades\Indonesia;
+
+// Pencarian umum dengan alamat lengkap
+$results = Indonesia::searchWithAddress('Bakongan');
+
+// Response:
+[
+    {
+        "code": "11.01.01",
+        "name": "BAKONGAN",
+        "full_address": "BAKONGAN, KAB. ACEH SELATAN, ACEH"
+    },
+    {
+        "code": "11.01.01.2001",
+        "name": "KEUDE BAKONGAN",
+        "postal_code": "23773",
+        "full_address": "KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, 23773"
+    }
+]
+
+// Pencarian dengan tipe spesifik
+$villages = Indonesia::searchWithAddress('Bakongan', 'village');
+
+// Pencarian dengan kolom tambahan
+$results = Indonesia::searchWithAddress('Bakongan', null, null, ['code', 'name', 'latitude', 'longitude']);
+
+// Pencarian lengkap dengan named parameters (PHP 8.0+)
+$results = Indonesia::searchWithAddress(
+    term: 'Bakongan',
+    type: 'village',
+    perPage: 15,
+    columns: ['code', 'name', 'latitude', 'longitude']
+);
+
+// Response dengan pagination sama dengan format getRegions()
+```
+
 ### Mencari Berdasarkan Kode (findByCode)
 
 ```php
@@ -228,7 +269,7 @@ $info = Indonesia::getRegionInfo('11.01.01.2001');
         "name": "KEUDE BAKONGAN",
         "postal_code": "23773"
     },
-    "fullAddress": "KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, 23773"
+    "full_address": "KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, 23773"
 }
 ```
 
