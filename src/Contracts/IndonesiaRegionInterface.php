@@ -30,6 +30,12 @@ interface IndonesiaRegionInterface
      * Search regions by name or postal code
      */
     public function search(string $term, ?string $type = null, ?int $perPage = null, ?array $columns = null): Collection|LengthAwarePaginator;
+
+    /**
+     * Search for regions by name or postal code with full address
+     */
+    public function searchWithAddress(string $term, ?string $type = null, ?int $perPage = null, ?array $columns = null): Collection|LengthAwarePaginator;
+
     /**
      * Get full address string for a village code
      */
