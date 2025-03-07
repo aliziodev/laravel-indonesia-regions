@@ -79,7 +79,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
                 return [];
             }
 
-            $regions['fullAddress'] = $this->buildFullAddress($regions, array_keys($regionTypes));
+            $regions['full_address'] = $this->buildFullAddress($regions, array_keys($regionTypes));
             return $regions;
         });
     }
@@ -125,6 +125,29 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
         return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($term, $type, $columns) {
             return $this->performSearch($term, $type, null, $columns);
         });
+    }
+
+    /**
+     * Search for regions by name or postal code with full address
+     * 
+     * @param string $term Search term (region name or postal code)
+     * @param string|null $type Region type filter (province, city, district, village)
+     * @param int|null $perPage Items per page for pagination
+     * @param array|null $columns Columns to retrieve
+     * @return Collection|LengthAwarePaginator
+     */
+    public function searchWithAddress(string $term, ?string $type = null, ?int $perPage = null, ?array $columns = null): Collection|LengthAwarePaginator
+    {
+        $results = $this->search($term, $type, $perPage, $columns);
+
+        // Transform results to include full address
+        $results->transform(function ($item) {
+            $item = is_array($item) ? (object)$item : $item;
+            $item->full_address = $this->getFullAddress($item->code);
+            return $item;
+        });
+
+        return $results;
     }
 
     /**
@@ -193,7 +216,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
      */
     public function getFullAddress(string $villageCode): ?string
     {
-        return $this->getRegionInfo($villageCode)['fullAddress'] ?? null;
+        return $this->getRegionInfo($villageCode)['full_address'] ?? null;
     }
 
     /**
