@@ -59,7 +59,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
         $columns = $this->resolveColumns($columns);
         $cacheKey = $this->getCacheKey('hierarchy', $code, $columns);
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($code, $columns) {
+        return Cache::store('file')->remember($cacheKey, self::CACHE_TTL, function () use ($code, $columns) {
             $regions = [];
 
             $regionTypes = [
@@ -96,7 +96,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
         $columns = $this->resolveColumns($columns);
         $cacheKey = $this->getCacheKey('region', $code, $columns);
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($code, $columns) {
+        return Cache::store('file')->remember($cacheKey, self::CACHE_TTL, function () use ($code, $columns) {
             return IndonesiaRegion::select($columns)->find($code);
         });
     }
@@ -122,7 +122,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
             'columns' => $columns ? implode(',', $columns) : 'default'
         ]);
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($term, $type, $columns) {
+        return Cache::store('file')->remember($cacheKey, self::CACHE_TTL, function () use ($term, $type, $columns) {
             return $this->performSearch($term, $type, null, $columns);
         });
     }
@@ -242,7 +242,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
     {
         $cacheKey = "postal_code.{$postalCode}";
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($postalCode) {
+        return Cache::store('file')->remember($cacheKey, self::CACHE_TTL, function () use ($postalCode) {
             return IndonesiaRegion::where('postal_code', $postalCode)
                 ->select(self::DEFAULT_COLUMNS)
                 ->first();
@@ -275,20 +275,21 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
         }
 
         // Then verify if the code exists in the database
-        return Cache::remember("validate_code.{$code}", self::CACHE_TTL, function () use ($code) {
+        return Cache::store('file')->remember("validate_code.{$code}", self::CACHE_TTL, function () use ($code) {
             return IndonesiaRegion::where('code', $code)->exists();
         });
     }
 
     /**
      * Clear all region-related cache
-     * 
+     *
      * @return bool True if successful, false otherwise
      */
     public function clearCache(): bool
     {
         try {
             $patterns = [
+                'indonesia_regions.*',
                 'region.*',
                 'regions.*',
                 'hierarchy.*',
@@ -298,20 +299,24 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
             ];
 
             foreach ($patterns as $pattern) {
-                $keys = Cache::get($pattern);
-                if (is_array($keys)) {
-                    foreach ($keys as $key) {
-                        Cache::forget($key);
-                    }
+                try {
+                    Cache::store('file')->forget($pattern);
+                } catch (\Exception $e) {
+                    continue;
                 }
-                Cache::forget($pattern);
             }
 
-            // Force clear all cache as fallback
-            Cache::flush();
+            // Try specific cache clear first
+            try {
+                Cache::store('file')->flush();
+            } catch (\Exception $e) {
+                // If file store fails, try default store
+                Cache::flush();
+            }
 
             return true;
         } catch (\Exception $e) {
+            report($e); // Log the error
             return false;
         }
     }
