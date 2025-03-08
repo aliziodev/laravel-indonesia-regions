@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Cache;
 trait RegionHelperTrait
 {
     protected const CACHE_TTL = 86400; // 24 hours
-    protected const ALL_COLUMNS = ['code', 'name', 'postal_code', 'latitude', 'longitude'];
+    protected const ALL_COLUMNS = ['code', 'name', 'postal_code', 'latitude', 'longitude', 'status'];
     protected const DEFAULT_COLUMNS = ['code', 'name', 'postal_code'];
     protected const PER_PAGE = 15;
 
