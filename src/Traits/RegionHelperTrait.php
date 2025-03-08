@@ -95,10 +95,15 @@ trait RegionHelperTrait
 
     protected function getCachedRegions(?string $parentCode, array $columns): Collection
     {
-        $cacheKey = "regions.{$parentCode}." . implode('.', $columns);
+        $cacheKey = "indonesia_regions.{$parentCode}." . implode('.', $columns);
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($parentCode, $columns) {
+        try {
+            return Cache::store('file')->remember($cacheKey, self::CACHE_TTL, function () use ($parentCode, $columns) {
+                return $this->buildRegionQuery($parentCode)->get($columns);
+            });
+        } catch (\Exception $e) {
+            // Fallback: return direct query result if caching fails
             return $this->buildRegionQuery($parentCode)->get($columns);
-        });
+        }
     }
 }
