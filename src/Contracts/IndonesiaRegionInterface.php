@@ -19,7 +19,7 @@ interface IndonesiaRegionInterface
     /**
      * Get detailed region information including hierarchy
      */
-    public function getRegionInfo(string $code, ?array $columns = null): array;
+    public function getRegionInfo(string $code, ?array $columns = null, ?string $countryName = null): array;
 
     /**
      * Find region by its code
@@ -34,12 +34,18 @@ interface IndonesiaRegionInterface
     /**
      * Search for regions by name or postal code with full address
      */
-    public function searchWithAddress(string $term, ?string $type = null, ?int $perPage = null, ?array $columns = null): Collection|LengthAwarePaginator;
+    public function searchWithAddress(string $term, ?string $type = null, ?int $perPage = null, ?array $columns = null, ?string $countryName = null): Collection|LengthAwarePaginator;
+
+    /**
+     * Search for regions by name or postal code with full address
+     * Always returns results up to village level
+     */
+    public function searchWithFullText(string $term, ?int $limit = null, ?string $countryName = null): Collection;
 
     /**
      * Get full address string for a village code
      */
-    public function getFullAddress(string $villageCode): ?string;
+    public function getFullAddress(string $villageCode, ?string $countryName = null): ?string;
 
     /**
      * Get regions formatted for select input

@@ -8,6 +8,7 @@ use Aliziodev\IndonesiaRegions\Traits\RegionHelperTrait;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Indonesia Region Service
@@ -29,6 +30,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
     public function getRegions(?string $parentCode = null, ?array $columns = null, ?int $perPage = null): Collection|LengthAwarePaginator
     {
         $columns = $this->resolveColumns($columns);
+        $query = $this->buildRegionQuery($parentCode);
 
         // For provinces, exclude postal_code from default columns
         if ($columns === self::DEFAULT_COLUMNS) {
@@ -41,7 +43,9 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
             }
         }
 
-        $query = $this->buildRegionQuery($parentCode);
+        // Apply query optimization
+       $query = $this->optimizeQuery($query, $columns);
+
         return $perPage
             ? $query->paginate($perPage, $columns)
             : $this->getCachedRegions($parentCode, $columns);
@@ -54,22 +58,17 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
      * @param array|null $columns Columns to retrieve
      * @return array Region information with hierarchy
      */
-    public function getRegionInfo(string $code, ?array $columns = null): array
+    public function getRegionInfo(string $code, ?array $columns = null, ?string $countryName = self::DEFAULT_COUNTRY): array
     {
+        $this->validateRegionCode($code);
         $columns = $this->resolveColumns($columns);
         $cacheKey = $this->getCacheKey('hierarchy', $code, $columns);
 
-        return Cache::store('file')->remember($cacheKey, self::CACHE_TTL, function () use ($code, $columns) {
+        return $this->cache()->remember($cacheKey, self::CACHE_CONFIG['ttl'], function () use ($code, $columns, $countryName) {
             $regions = [];
+            $hierarchy = $this->getRegionHierarchy($code);
 
-            $regionTypes = [
-                'province' => substr($code, 0, 2),
-                'city' => substr($code, 0, 5),
-                'district' => substr($code, 0, 8),
-                'village' => strlen($code) === 13 ? $code : null
-            ];
-
-            foreach ($regionTypes as $type => $regionCode) {
+            foreach ($hierarchy as $type => $regionCode) {
                 if ($regionCode && $region = $this->findByCode($regionCode, $columns)) {
                     $regions[$type] = $this->buildRegionData($region, $type, $columns);
                 }
@@ -79,7 +78,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
                 return [];
             }
 
-            $regions['full_address'] = $this->buildFullAddress($regions, array_keys($regionTypes));
+            $regions['full_address'] = $this->buildFullAddress($regions, $countryName);
             return $regions;
         });
     }
@@ -96,7 +95,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
         $columns = $this->resolveColumns($columns);
         $cacheKey = $this->getCacheKey('region', $code, $columns);
 
-        return Cache::store('file')->remember($cacheKey, self::CACHE_TTL, function () use ($code, $columns) {
+        return $this->cache()->remember($cacheKey, self::CACHE_CONFIG['ttl'], function () use ($code, $columns) {
             return IndonesiaRegion::select($columns)->find($code);
         });
     }
@@ -112,19 +111,43 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
      */
     public function search(string $term, ?string $type = null, ?int $perPage = null, ?array $columns = null): Collection|LengthAwarePaginator
     {
-        // Only cache if not paginated
-        if ($perPage) {
-            return $this->performSearch($term, $type, $perPage, $columns);
+        try {
+            // Validate and sanitize input
+            $term = trim($term);
+            if (empty($term)) {
+                return collect([]);
+            }
+
+            $this->validateRegionType($type);
+
+            // Use direct search for paginated results
+            if ($perPage) {
+                try {
+                    return $this->performSearch($term, $type, $perPage, $columns);
+                } catch (\Exception $e) {
+                    report("[Indonesia Region] Paginated search failed: " . $e->getMessage());
+                    return new LengthAwarePaginator([], 0, $perPage);
+                }
+            }
+
+            // Use cached results for non-paginated searches
+            $cacheKey = $this->getCacheKey('search', $term, [
+                'type' => $type ?? 'all',
+                'columns' => $columns ? implode(',', $columns) : 'default'
+            ]);
+
+            try {
+                return $this->cache()->remember($cacheKey, self::CACHE_CONFIG['ttl'], function () use ($term, $type, $columns) {
+                    return $this->performSearch($term, $type, null, $columns);
+                });
+            } catch (\Exception $e) {
+                report("[Indonesia Region] Cached search failed: " . $e->getMessage());
+                return collect([]);
+            }
+        } catch (\Exception $e) {
+            report("[Indonesia Region] Search operation failed: " . $e->getMessage());
+            return $perPage ? new LengthAwarePaginator([], 0, $perPage) : collect([]);
         }
-
-        $cacheKey = $this->getCacheKey('search', $term, [
-            'type' => $type ?? 'all',
-            'columns' => $columns ? implode(',', $columns) : 'default'
-        ]);
-
-        return Cache::store('file')->remember($cacheKey, self::CACHE_TTL, function () use ($term, $type, $columns) {
-            return $this->performSearch($term, $type, null, $columns);
-        });
     }
 
     /**
@@ -136,18 +159,80 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
      * @param array|null $columns Columns to retrieve
      * @return Collection|LengthAwarePaginator
      */
-    public function searchWithAddress(string $term, ?string $type = null, ?int $perPage = null, ?array $columns = null): Collection|LengthAwarePaginator
+    public function searchWithAddress(string $term, ?string $type = null, ?int $perPage = null, ?array $columns = null,  ?string $countryName = self::DEFAULT_COUNTRY): Collection|LengthAwarePaginator
     {
         $results = $this->search($term, $type, $perPage, $columns);
 
         // Transform results to include full address
-        $results->transform(function ($item) {
+        $results->transform(function ($item) use ($countryName) {
             $item = is_array($item) ? (object)$item : $item;
-            $item->full_address = $this->getFullAddress($item->code);
+            $item->full_address = $this->getFullAddress($item->code, $countryName);
             return $item;
         });
 
         return $results;
+    }
+
+
+    /**
+     * Search for regions by name or postal code with full address
+     * Always returns results up to village level
+     *
+     * @param string $term Search term (region name or postal code)
+     * @param int|null $limit Maximum number of results to return (default: 100)
+     * @param string|null $countryName Country name to append (default: 'Indonesia')
+     * @return Collection
+     */
+    public function searchWithFullText(string $term, ?int $limit = self::LIMIT_FULL_TEXT_SEARCH, ?string $countryName = self::DEFAULT_COUNTRY): Collection
+    {
+        $cacheKey = $this->getCacheKey('full_text_search', $term, [
+            'limit' => $limit,
+            'country' => $countryName
+        ]);
+
+        return $this->cache()->remember($cacheKey, self::CACHE_CONFIG['ttl'], function () use ($term, $limit, $countryName) {
+            try {
+                $lengthFunc = $this->getLengthFunction();
+                $substringFunc = $this->getSubstringFunction();
+
+                $query = IndonesiaRegion::query()
+                    ->select([
+                        'v.code as village_code',
+                        'v.name as village_name',
+                        'v.postal_code',
+                        'p.name as province_name',
+                        'c.name as city_name',
+                        'd.name as district_name'
+                    ])
+                    ->from('indonesia_regions as v')
+                    ->join('indonesia_regions as d', DB::raw("$substringFunc(v.code, 1, 8)"), '=', 'd.code')
+                    ->join('indonesia_regions as c', DB::raw("$substringFunc(v.code, 1, 5)"), '=', 'c.code')
+                    ->join('indonesia_regions as p', DB::raw("$substringFunc(v.code, 1, 2)"), '=', 'p.code')
+                    ->whereRaw("$lengthFunc(v.code) = ?", [self::REGION_TYPES['village']])
+                    ->where(function ($q) use ($term) {
+                        $q->where('v.name', 'like', '%' . $term . '%')
+                            ->orWhere('d.name', 'like', '%' . $term . '%')
+                            ->orWhere('c.name', 'like', '%' . $term . '%')
+                            ->orWhere('p.name', 'like', '%' . $term . '%');
+                    })
+                    ->limit(min($limit, self::QUERY_CONFIG['max_results']));
+
+                return $this->handleLargeDataset($query->get(), function ($item) use ($countryName) {
+                    return [
+                        'code' => $item->village_code,
+                        'province' => $item->province_name,
+                        'city' => $item->city_name,
+                        'district' => $item->district_name,
+                        'village' => $item->village_name,
+                        'postal_code' => $item->postal_code,
+                        'full_address' => $this->buildFullAddress($item, $countryName, true)
+                    ];
+                });
+            } catch (\Exception $e) {
+                $this->handleError($e, 'Full text search failed');
+                throw $e;
+            }
+        });
     }
 
     /**
@@ -161,44 +246,57 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
      */
     protected function performSearch(string $term, ?string $type = null, ?int $perPage = null, ?array $columns = null): Collection|LengthAwarePaginator
     {
-        $columns = $this->resolveColumns($columns);
+        try {
+            $columns = $this->resolveColumns($columns);
+            $selectedColumns = array_unique(array_merge(['code', 'name'], $columns));
 
-        // Always include code and name
-        $selectedColumns = array_unique(array_merge(['code', 'name'], $columns));
+            if ($type === 'village' || in_array('postal_code', $columns)) {
+                $selectedColumns[] = 'postal_code';
+            }
 
-        // Add postal_code for village searches or if explicitly requested
-        if ($type === 'village' || in_array('postal_code', $columns)) {
-            $selectedColumns[] = 'postal_code';
-        }
+            $lengthFunc = $this->getLengthFunction();
+            $query = IndonesiaRegion::query()
+                ->select($selectedColumns);
 
-        $query = IndonesiaRegion::query()
-            ->select($selectedColumns)
-            ->where(function ($q) use ($term, $type) {
-                $q->where('name', 'like', "%{$term}%");
+            // Build search conditions
+            $query->where(function ($q) use ($term, $type, $lengthFunc) {
+                $q->where('name', 'like', '%' . $term . '%');
 
-                if (is_numeric($term)) {
-                    // Only include postal code search for villages or when type is not specified
-                    if ($type === 'village' || $type === null) {
-                        $q->orWhere(function ($sq) use ($term) {
-                            $sq->where('postal_code', 'like', "%{$term}%")
-                                ->whereRaw('LENGTH(code) = ?', [self::REGION_TYPES['village']]);
-                        });
-                    }
+                if (is_numeric($term) && ($type === 'village' || $type === null)) {
+                    $q->orWhere(function ($sq) use ($term, $lengthFunc) {
+                        $sq->where('postal_code', 'like', '%' . $term . '%')
+                            ->whereRaw("{$lengthFunc}(code) = ?", [self::REGION_TYPES['village']]);
+                    });
                 }
             });
 
-        if ($type && isset(self::REGION_TYPES[$type])) {
-            $query->whereRaw('LENGTH(code) = ?', [self::REGION_TYPES[$type]]);
+            // Apply region type filter
+            if ($type && isset(self::REGION_TYPES[$type])) {
+                $query->whereRaw("{$lengthFunc}(code) = ?", [self::REGION_TYPES[$type]]);
+            }
+
+            // Apply pagination or get all results
+            $results = $perPage ? $query->paginate($perPage) : $query->get();
+
+            return $this->handleSearchResults($results, $selectedColumns);
+        } catch (\Exception $e) {
+            report("[Indonesia Region] Search query failed: " . $e->getMessage());
+            throw $e;
         }
+    }
 
-        $results = $perPage
-            ? $query->paginate($perPage)
-            : $query->get();
-
-        // Remove postal_code from non-village results
+    /**
+     * Handle search results based on selected columns
+     *
+     * @param Collection|LengthAwarePaginator $results Search results
+     * @param array $selectedColumns Selected columns
+     * @return Collection|LengthAwarePaginator
+     */
+    protected function handleSearchResults($results, array $selectedColumns)
+    {
         if (in_array('postal_code', $selectedColumns)) {
             $results->transform(function ($item) {
-                if (strlen($item->code) !== 13) {
+                if (strlen($item->code) !== self::REGION_TYPES['village']) {
                     unset($item->postal_code);
                 }
                 return $item;
@@ -214,9 +312,9 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
      * @param string $villageCode Village code
      * @return string|null Full address with postal code
      */
-    public function getFullAddress(string $villageCode): ?string
+    public function getFullAddress(string $villageCode, ?string $countryName = self::DEFAULT_COUNTRY): ?string
     {
-        return $this->getRegionInfo($villageCode)['full_address'] ?? null;
+        return $this->getRegionInfo($villageCode, null, $countryName)['full_address'] ?? null;
     }
 
     /**
@@ -240,11 +338,13 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
      */
     public function findByPostalCode(string $postalCode): ?IndonesiaRegion
     {
-        $cacheKey = "postal_code.{$postalCode}";
+        $cacheKey = $this->getCacheKey('postal_code', $postalCode);
 
-        return Cache::store('file')->remember($cacheKey, self::CACHE_TTL, function () use ($postalCode) {
-            return IndonesiaRegion::where('postal_code', $postalCode)
-                ->select(self::DEFAULT_COLUMNS)
+        return $this->cache()->remember($cacheKey, self::CACHE_CONFIG['ttl'], function () use ($postalCode) {
+            return IndonesiaRegion::query()
+                ->select($this->resolveColumns(null))
+                ->where('postal_code', $postalCode)
+                ->whereRaw("{$this->getLengthFunction()}(code) = ?", [self::REGION_TYPES['village']])
                 ->first();
         });
     }
@@ -257,8 +357,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
      */
     public function getRegionType(string $code): ?string
     {
-        $length = strlen($code);
-        return array_search($length, self::REGION_TYPES, true) ?: null;
+        return $this->getRegionTypeFromCode($code);
     }
 
     /**
@@ -269,15 +368,20 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
      */
     public function validateCode(string $code): bool
     {
-        $type = $this->getRegionType($code);
-        if (!$type) {
+        try {
+            $type = $this->getRegionTypeFromCode($code);
+            if (!$type) {
+                return false;
+            }
+
+            $cacheKey = $this->getCacheKey('validate', $code);
+            return $this->cache()->remember($cacheKey, self::CACHE_CONFIG['ttl'], function () use ($code) {
+                return IndonesiaRegion::where('code', $code)->exists();
+            });
+        } catch (\Exception $e) {
+            $this->handleError($e, 'Code validation failed');
             return false;
         }
-
-        // Then verify if the code exists in the database
-        return Cache::store('file')->remember("validate_code.{$code}", self::CACHE_TTL, function () use ($code) {
-            return IndonesiaRegion::where('code', $code)->exists();
-        });
     }
 
     /**
@@ -295,28 +399,27 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
                 'hierarchy.*',
                 'postal_code.*',
                 'search.*',
-                'validate_code.*'
+                'full_text_search.*',
+                'validate.*'
             ];
 
             foreach ($patterns as $pattern) {
                 try {
-                    Cache::store('file')->forget($pattern);
+                    $this->cache()->forget($pattern);
                 } catch (\Exception $e) {
                     continue;
                 }
             }
 
-            // Try specific cache clear first
             try {
-                Cache::store('file')->flush();
+                $this->cache()->flush();
             } catch (\Exception $e) {
-                // If file store fails, try default store
                 Cache::flush();
             }
 
             return true;
         } catch (\Exception $e) {
-            report($e); // Log the error
+            $this->handleError($e, 'Cache clear failed');
             return false;
         }
     }
