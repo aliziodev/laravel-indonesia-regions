@@ -18,9 +18,11 @@ Package Laravel untuk data wilayah Indonesia lengkap dengan kode pos. Package in
 -   Support untuk Laravel 11.x dan 12.x
 -   Pencarian wilayah
 -   Pencarian dengan alamat lengkap
+-   Pencarian full text hingga level desa
 -   Hirarki/Info wilayah
 -   Format untuk dropdown/select
 -   Pagination support
+-   Kustomisasi nama negara
 
 ## Instalasi
 
@@ -195,6 +197,43 @@ $results = Indonesia::searchWithAddress(
 );
 
 // Response dengan pagination sama dengan format getRegions()
+
+// Menggunakan nama negara kustom
+$results = Indonesia::searchWithAddress('Bakongan', null, null, null, 'Republic of Indonesia');
+
+```
+
+### Pencarian Full Text (searchWithFullText)
+
+```php
+use Aliziodev\IndonesiaRegions\Facades\Indonesia;
+
+// Pencarian full text dengan default limit (15)
+$results = Indonesia::searchWithFullText('Bakongan');
+
+// Pencarian dengan limit kustom
+$results = Indonesia::searchWithFullText('Bakongan', 25);
+
+// Pencarian dengan nama negara kustom
+$results = Indonesia::searchWithFullText(
+    term: 'Bakongan',
+    limit: 25,
+    countryName: 'Republic of Indonesia'
+);
+
+// Response:
+[
+    {
+        "code": "11.01.01.2001",
+        "province": "ACEH",
+        "city": "KAB. ACEH SELATAN",
+        "district": "BAKONGAN",
+        "village": "KEUDE BAKONGAN",
+        "postal_code": "23773",
+        "full_address": "KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, REPUBLIC OF INDONESIA, 23773"
+    }
+    // ... more results
+]
 ```
 
 ### Mencari Berdasarkan Kode (findByCode)
@@ -271,6 +310,11 @@ $info = Indonesia::getRegionInfo('11.01.01.2001');
     },
     "full_address": "KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, 23773"
 }
+
+// Menggunakan nama negara kustom
+$info = Indonesia::getRegionInfo('11.01.01.2001', null, 'Republic of Indonesia');
+// Response akan menggunakan nama negara yang dikustomisasi
+"KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, Republic of Indonesia, 23773"
 ```
 
 ### Alamat Lengkap (getFullAddress)
@@ -281,6 +325,11 @@ $address = Indonesia::getFullAddress('11.01.01.2001');
 // Response:
 "KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, 23773"
 
+
+// Menggunakan nama negara kustom
+$address = Indonesia::getFullAddress('11.01.01.2001', 'Republic of Indonesia');
+// Response akan menggunakan nama negara yang dikustomisasi
+"KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, Republic of Indonesia, 23773"
 ```
 
 ### Pencarian Kode Pos (findByPostalCode)
@@ -348,6 +397,20 @@ php artisan indonesia-regions:clear-cache
 -   `type` (string|null) : Tipe wilayah ('province'|'city'|'district'|'village')
 -   `perPage` (int|null) : Jumlah data per halaman untuk pagination (opsional)
 
+### searchWithAddress
+
+-   `term` (string) : Kata kunci pencarian
+-   `type` (string|null) : Tipe wilayah ('province'|'city'|'district'|'village')
+-   `perPage` (int|null) : Jumlah data per halaman untuk pagination (opsional)
+-   `columns` (array|null) : Kolom yang akan diambil
+-   `countryName` (string|null) : Nama negara untuk alamat lengkap (default: 'Indonesia')
+
+### searchWithFullText
+
+-   `term` (string) : Kata kunci pencarian
+-   `limit` (int|null) : Batas jumlah hasil pencarian (default: 15)
+-   `countryName` (string|null) : Nama negara untuk alamat lengkap (default: 'Indonesia')
+
 ### findByCode
 
 -   `code` (string) : Kode wilayah
@@ -361,10 +424,12 @@ php artisan indonesia-regions:clear-cache
 
 -   `code` (string) : Kode wilayah
 -   `columns` (array|null) : Kolom yang akan diambil (default: ['code', 'name', 'postal_code'])
+-   `countryName` (string|null) : Nama negara untuk alamat lengkap (default: 'Indonesia')
 
 ### getFullAddress
 
 -   `villageCode` (string) : Kode desa/kelurahan
+-   `countryName` (string|null) : Nama negara untuk alamat lengkap (default: 'Indonesia')
 
 ### findByPostalCode
 
