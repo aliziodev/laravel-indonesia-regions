@@ -135,10 +135,10 @@ trait RegionHelperTrait
         $parts = $this->buildAddressParts($data, $isRaw);
 
         $addressParts = array_filter([
-            $parts['village'],
-            $parts['district'],
-            $parts['city'],
-            $parts['province'],
+            $this->formatName($parts['village']),
+            $this->formatName($parts['district']),
+            $this->formatName($parts['city']),
+            $this->formatName($parts['province']),
             $countryName,
             $parts['postal_code']
         ]);

@@ -44,7 +44,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
         }
 
         // Apply query optimization
-       $query = $this->optimizeQuery($query, $columns);
+        $query = $this->optimizeQuery($query, $columns);
 
         return $perPage
             ? $query->paginate($perPage, $columns)
@@ -220,10 +220,10 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
                 return $this->handleLargeDataset($query->get(), function ($item) use ($countryName) {
                     return [
                         'code' => $item->village_code,
-                        'province' => $item->province_name,
-                        'city' => $item->city_name,
-                        'district' => $item->district_name,
-                        'village' => $item->village_name,
+                        'province' =>  $this->formatName($item->province_name),
+                        'city' =>  $this->formatName($item->city_name),
+                        'district' =>  $this->formatName($item->district_name),
+                        'village' =>  $this->formatName($item->village_name),
                         'postal_code' => $item->postal_code,
                         'full_address' => $this->buildFullAddress($item, $countryName, true)
                     ];
