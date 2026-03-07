@@ -2,12 +2,13 @@
 
 namespace Aliziodev\IndonesiaRegions\Commands;
 
-use Illuminate\Console\Command;
 use Aliziodev\IndonesiaRegions\Facades\Indonesia;
+use Illuminate\Console\Command;
 
 class ClearCacheCommand extends Command
 {
     protected $signature = 'indonesia-regions:clear-cache';
+
     protected $description = 'Clear Indonesia Regions cache';
 
     public function handle()

@@ -24,12 +24,24 @@
         }
     ],
     "require": {
-        "php": "^8.2",
+        "php": "^8.2|^8.3",
+        "illuminate/database": "^11.0|^12.0",
         "illuminate/support": "^11.0|^12.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0",
+        "pestphp/pest": "^3.8|^4.0",
+        "pestphp/pest-plugin-laravel": "^3.0|^4.0",
+        "laravel/pint": "^1.24"
     },
     "autoload": {
         "psr-4": {
             "Aliziodev\\IndonesiaRegions\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Aliziodev\\IndonesiaRegions\\Tests\\": "tests/"
         }
     },
     "extra": {
@@ -42,8 +54,13 @@
             }
         }
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "prefer-stable": true,
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
     "funding": [
         {
             "type": "github",

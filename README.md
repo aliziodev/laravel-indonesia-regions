@@ -8,11 +8,12 @@
 
 Package Laravel untuk data wilayah Indonesia lengkap dengan kode pos. Package ini menyediakan data provinsi, kota/kabupaten, kecamatan, dan desa/kelurahan.
 
+Package ini dipertahankan sebagai package kompatibilitas untuk integrasi lama. Untuk ekosistem data terbaru, sumber pengembangan utama berada di `aliziodev/laravel-wilayah` beserta addon terkait.
+
 ## Fitur
 
 -   Data wilayah Indonesia lengkap dan terupdate (sesuai dengan Kepmendagri No 100.1.1-6117 Tahun 2022)
 -   Kode pos untuk setiap desa/kelurahan
--   Koordinat latitude dan longitude untuk setiap wilayah
 -   Cache system untuk performa optimal
 -   Facade untuk penggunaan yang mudah
 -   Support untuk Laravel 11.x dan 12.x
@@ -34,6 +35,12 @@ Kemudian jalankan command instalasi:
 
 ```bash
 php artisan indonesia-regions:install
+```
+
+Opsional, publish konfigurasi cache package:
+
+```bash
+php artisan vendor:publish --tag=indonesia-regions-config
 ```
 
 ## Gaya Penulisan Parameter
@@ -90,7 +97,7 @@ $provinces = Indonesia::getRegions();
 ]
 
 // Mengambil kota/kabupaten di Aceh dengan pagination
-$cities = Indonesia::getRegions('11', ['code', 'name', 'latitude', 'longitude'], 15);
+$cities = Indonesia::getRegions('11', ['code', 'name'], 15);
 
 // Response dengan pagination:
 {
@@ -99,8 +106,6 @@ $cities = Indonesia::getRegions('11', ['code', 'name', 'latitude', 'longitude'],
         {
             "code": "11.01",
             "name": "KAB. ACEH SELATAN",
-            "latitude": 3.31467,
-            "longitude": 97.3517
         },
         // ... more cities
     ],
@@ -146,14 +151,14 @@ $results = Indonesia::search('Bakongan');
 $villages = Indonesia::search('Bakongan', 'village');
 
 // Pencarian dengan kolom tambahan
-$results = Indonesia::search('Bakongan', null, null, ['code', 'name', 'latitude', 'longitude']);
+$results = Indonesia::search('Bakongan', null, null, ['code', 'name']);
 
 // Pencarian lengkap dengan named parameters (PHP 8.0+)
 $results = Indonesia::search(
     term: 'Bakongan',
     type: 'village',
     perPage: 15,
-    columns: ['code', 'name', 'latitude', 'longitude']
+    columns: ['code', 'name']
 );
 
 // Response dengan pagination sama dengan format getRegions()
@@ -186,14 +191,14 @@ $results = Indonesia::searchWithAddress('Bakongan');
 $villages = Indonesia::searchWithAddress('Bakongan', 'village');
 
 // Pencarian dengan kolom tambahan
-$results = Indonesia::searchWithAddress('Bakongan', null, null, ['code', 'name', 'latitude', 'longitude']);
+$results = Indonesia::searchWithAddress('Bakongan', null, null, ['code', 'name']);
 
 // Pencarian lengkap dengan named parameters (PHP 8.0+)
 $results = Indonesia::searchWithAddress(
     term: 'Bakongan',
     type: 'village',
     perPage: 15,
-    columns: ['code', 'name', 'latitude', 'longitude']
+    columns: ['code', 'name']
 );
 
 // Response dengan pagination sama dengan format getRegions()
@@ -246,7 +251,7 @@ $region = Indonesia::findByCode('11.01.01.2001', ['code', 'name']);
 // Named parameters (PHP 8.0+)
 $region = Indonesia::findByCode(
     code: '11.01.01.2001',
-    columns: ['code', 'name', 'latitude', 'longitude']
+    columns: ['code', 'name']
 );
 
 // Response:
@@ -254,8 +259,6 @@ $region = Indonesia::findByCode(
     "code": "11.01.01.2001",
     "name": "KEUDE BAKONGAN",
     "postal_code": "23773",
-    "latitude": 3.1618538408941346,
-    "longitude": 97.43651771865193,
 }
 ```
 
@@ -367,6 +370,8 @@ $type = Indonesia::getRegionType('11'); // 'province'
 php artisan indonesia-regions:clear-cache
 ```
 
+Pengaturan cache dapat dikustomisasi melalui `config/indonesia-regions.php`.
+
 ## Struktur Kode Wilayah
 
 -   Provinsi: 2 digit (contoh: 11)
@@ -379,8 +384,6 @@ php artisan indonesia-regions:clear-cache
 -   code : Kode wilayah (primary key)
 -   name : Nama wilayah
 -   postal_code : Kode pos (untuk desa/kelurahan)
--   latitude : Koordinat garis lintang
--   longitude : Koordinat garis bujur
 -   status : Status wilayah aktif/tidak aktif (optional)
 
 ## Method Parameters

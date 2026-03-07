@@ -9,10 +9,13 @@ class IndonesiaRegionsServiceProvider extends ServiceProvider
 {
     public function boot()
     {
-        // Publish migrations from correct package location
         $this->publishes([
             __DIR__.'/Database/Migrations' => database_path('migrations'),
         ], 'indonesia-regions-migrations');
+
+        $this->publishes([
+            __DIR__.'/../config/indonesia-regions.php' => config_path('indonesia-regions.php'),
+        ], 'indonesia-regions-config');
 
         if ($this->app->runningInConsole()) {
             $this->commands([
@@ -24,8 +27,10 @@ class IndonesiaRegionsServiceProvider extends ServiceProvider
 
     public function register()
     {
+        $this->mergeConfigFrom(__DIR__.'/../config/indonesia-regions.php', 'indonesia-regions');
+
         $this->app->singleton('indonesia-region', function ($app) {
-            return new IndonesiaRegionService();
+            return new IndonesiaRegionService;
         });
     }
 }

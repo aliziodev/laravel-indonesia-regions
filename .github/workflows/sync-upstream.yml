@@ -1,0 +1,124 @@
+name: Sync Upstream Data
+
+on:
+  schedule:
+    - cron: '45 3 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Paksa sync walau hash source tidak berubah'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Check source hash
+        id: check
+        env:
+          FORCE_SYNC: ${{ github.event.inputs.force || 'false' }}
+        run: |
+          UPSTREAM_HASH=$(curl -sf \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/aliziodev/laravel-wilayah/commits/main" \
+            | php -r '$data = json_decode(stream_get_contents(STDIN), true); echo $data["sha"] ?? "null";')
+
+          CURRENT_HASH=$(php -r "
+            \$v = @include 'data/version.php';
+            echo \$v['source_hash'] ?? 'none';
+          ")
+
+          echo "upstream_hash=$UPSTREAM_HASH" >> $GITHUB_OUTPUT
+          echo "current_hash=$CURRENT_HASH" >> $GITHUB_OUTPUT
+
+          if [ "$UPSTREAM_HASH" = "null" ]; then
+            echo "Gagal membaca hash source dari GitHub API."
+            exit 1
+          fi
+
+          if [ "$FORCE_SYNC" = "true" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          elif [ "$UPSTREAM_HASH" != "$CURRENT_HASH" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "✅ Indonesia Regions sudah up-to-date."
+          fi
+
+      - name: Set release metadata
+        if: steps.check.outputs.changed == 'true'
+        id: meta
+        run: |
+          cp data/version.php /tmp/regions-version-before.php 2>/dev/null || true
+          echo "release_date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+      - name: Generate SQL from laravel-wilayah
+        if: steps.check.outputs.changed == 'true'
+        env:
+          UPSTREAM_HASH: ${{ steps.check.outputs.upstream_hash }}
+        run: |
+          git clone --depth=1 https://github.com/aliziodev/laravel-wilayah /tmp/laravel-wilayah
+          php .github/scripts/generate_sql.php /tmp/laravel-wilayah src/Database/Sql/indonesia_regions.sql data/version.php
+
+      - name: Bump version
+        if: steps.check.outputs.changed == 'true'
+        id: version
+        run: |
+          CURRENT_TAG=$(git tag --list 'v*' --sort=-version:refname | head -n 1)
+          CURRENT="${CURRENT_TAG#v}"
+
+          if [ -z "$CURRENT" ] || [ "$CURRENT" = "$CURRENT_TAG" ]; then
+            CURRENT="1.0.9"
+          fi
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          echo "current_version=$CURRENT" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog and release notes
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          php .github/scripts/generate_changelog.php \
+            /tmp/regions-version-before.php \
+            data/version.php \
+            CHANGELOG.md \
+            .github/release-notes.md \
+            "${{ steps.version.outputs.current_version }}" \
+            "${{ steps.version.outputs.new_version }}"
+
+      - name: Commit and push
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md data/version.php src/Database/Sql/indonesia_regions.sql
+          git commit -m "data: sync indonesia regions $(date +%Y-%m-%d) [skip ci]
+
+          Source: aliziodev/laravel-wilayah@${{ steps.check.outputs.upstream_hash }}"
+          git push
+
+      - name: Create GitHub release
+        if: steps.check.outputs.changed == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.new_version }}
+          name: "v${{ steps.version.outputs.new_version }} - Sync ${{ steps.meta.outputs.release_date }}"
+          body_path: .github/release-notes.md
+          generate_release_notes: false

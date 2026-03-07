@@ -3,52 +3,56 @@
 namespace Aliziodev\IndonesiaRegions\Traits;
 
 use Aliziodev\IndonesiaRegions\Models\IndonesiaRegion;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 trait RegionHelperTrait
 {
-    protected const CACHE_TTL = 86400; // 24 hours
-    protected const ALL_COLUMNS = ['code', 'name', 'postal_code', 'latitude', 'longitude', 'status'];
+    protected const CACHE_TTL = 86400;
+
+    protected const ALL_COLUMNS = ['code', 'name', 'postal_code', 'status'];
+
     protected const DEFAULT_COLUMNS = ['code', 'name', 'postal_code'];
+
     protected const PER_PAGE = 10;
+
     protected const LIMIT_FULL_TEXT_SEARCH = 100;
+
     protected const DEFAULT_COUNTRY = 'Indonesia';
 
     protected const REGION_TYPES = [
         'province' => 2,
         'city' => 5,
         'district' => 8,
-        'village' => 13
-    ];
-
-    protected const CACHE_CONFIG = [
-        'store' => 'file',
-        'ttl' => self::CACHE_TTL,
-        'prefix' => 'indonesia_regions'
+        'village' => 13,
     ];
 
     protected const QUERY_CONFIG = [
         'chunk_size' => 500,
-        'max_results' => 1000
+        'max_results' => 1000,
     ];
 
     protected const DB_CONFIG = [
         'functions' => [
             'mysql' => [
                 'length' => 'LENGTH',
-                'substring' => 'SUBSTRING'
+                'substring' => 'SUBSTRING',
             ],
             'pgsql' => [
                 'length' => 'LENGTH',
-                'substring' => 'SUBSTRING'
+                'substring' => 'SUBSTRING',
             ],
             'sqlsrv' => [
                 'length' => 'LEN',
-                'substring' => 'SUBSTRING'
-            ]
-        ]
+                'substring' => 'SUBSTRING',
+            ],
+            'sqlite' => [
+                'length' => 'LENGTH',
+                'substring' => 'SUBSTR',
+            ],
+        ],
     ];
 
     protected const DB_INDEXES = [
@@ -57,7 +61,7 @@ trait RegionHelperTrait
         'code_province' => 'idx_region_code_province',
         'code_city' => 'idx_region_code_city',
         'code_district' => 'idx_region_code_district',
-        'code_length' => 'idx_region_code_length'
+        'code_length' => 'idx_region_code_length',
     ];
 
     protected function getDbIndex(string $type): string
@@ -65,9 +69,26 @@ trait RegionHelperTrait
         return self::DB_INDEXES[$type] ?? self::DB_INDEXES['code_length'];
     }
 
-    protected function cache()
+    protected function cache(): CacheRepository
     {
-        return Cache::store(self::CACHE_CONFIG['store']);
+        $store = config('indonesia-regions.cache.store');
+
+        return $store ? Cache::store($store) : Cache::store();
+    }
+
+    protected function cacheTtl(): int
+    {
+        return (int) config('indonesia-regions.cache.ttl', self::CACHE_TTL);
+    }
+
+    protected function cachePrefix(): string
+    {
+        return (string) config('indonesia-regions.cache.prefix', 'indonesia_regions');
+    }
+
+    protected function cacheIndexKey(): string
+    {
+        return $this->cachePrefix().'.__keys__';
     }
 
     protected function resolveColumns(?array $columns): array
@@ -75,19 +96,43 @@ trait RegionHelperTrait
         if ($columns === ['*']) {
             return self::ALL_COLUMNS;
         }
+
         return $columns ?? self::DEFAULT_COLUMNS;
     }
 
     protected function getCacheKey(string $prefix, string $identifier, array|string $params = []): string
     {
-        $key = self::CACHE_CONFIG['prefix'] . ".{$prefix}.{$identifier}";
+        $key = $this->cachePrefix().".{$prefix}.{$identifier}";
 
-        if (!empty($params)) {
+        if ($params !== [] && $params !== '') {
             $normalized = is_array($params) ? implode('.', $params) : $params;
-            $key .= '.' . md5($normalized);
+            $key .= '.'.md5($normalized);
         }
 
         return $key;
+    }
+
+    protected function rememberCache(string $key, callable $callback): mixed
+    {
+        $value = $this->cache()->remember($key, $this->cacheTtl(), $callback);
+        $this->trackCacheKey($key);
+
+        return $value;
+    }
+
+    protected function trackCacheKey(string $key): void
+    {
+        $indexKey = $this->cacheIndexKey();
+        $keys = $this->cache()->get($indexKey, []);
+
+        if (! is_array($keys)) {
+            $keys = [];
+        }
+
+        if (! in_array($key, $keys, true)) {
+            $keys[] = $key;
+            $this->cache()->put($indexKey, $keys, $this->cacheTtl());
+        }
     }
 
     protected function formatName(string $name): string
@@ -95,15 +140,20 @@ trait RegionHelperTrait
         return ucwords(strtolower($name));
     }
 
+    protected function formatNameIfPresent(mixed $name): ?string
+    {
+        return is_string($name) && $name !== '' ? $this->formatName($name) : null;
+    }
+
     protected function buildRegionData(IndonesiaRegion $region, string $type, array $columns): array
     {
-        return array_reduce($columns, function ($data, $column) use ($region, $type) {
+        return array_reduce($columns, function (array $data, string $column) use ($region, $type): array {
             if ($column === 'postal_code' && $type !== 'village') {
                 return $data;
             }
 
             $data[$column] = $column === 'name'
-                ? $this->formatName($region->name)
+                ? $this->formatNameIfPresent($region->name)
                 : $region->$column;
 
             return $data;
@@ -117,7 +167,7 @@ trait RegionHelperTrait
             'district' => $isRaw ? 'district_name' : 'district.name',
             'city' => $isRaw ? 'city_name' : 'city.name',
             'province' => $isRaw ? 'province_name' : 'province.name',
-            'postal_code' => $isRaw ? 'postal_code' : 'village.postal_code'
+            'postal_code' => $isRaw ? 'postal_code' : 'village.postal_code',
         ];
 
         $parts = [];
@@ -135,12 +185,12 @@ trait RegionHelperTrait
         $parts = $this->buildAddressParts($data, $isRaw);
 
         $addressParts = array_filter([
-            $this->formatName($parts['village']),
-            $this->formatName($parts['district']),
-            $this->formatName($parts['city']),
-            $this->formatName($parts['province']),
+            $this->formatNameIfPresent($parts['village']),
+            $this->formatNameIfPresent($parts['district']),
+            $this->formatNameIfPresent($parts['city']),
+            $this->formatNameIfPresent($parts['province']),
             $countryName,
-            $parts['postal_code']
+            $parts['postal_code'],
         ]);
 
         return implode(', ', $addressParts);
@@ -152,7 +202,7 @@ trait RegionHelperTrait
         $lengthFunc = $this->getLengthFunction();
 
         if ($parentCode === null) {
-            $query->from(DB::raw("indonesia_regions FORCE INDEX (" . $this->getDbIndex('code_province') . ")"))
+            $query = $this->applyIndexHint($query, 'code_province')
                 ->whereRaw("{$lengthFunc}(code) = ?", [self::REGION_TYPES['province']]);
         } else {
             $length = strlen($parentCode);
@@ -160,41 +210,46 @@ trait RegionHelperTrait
                 2 => 'code_city',
                 5 => 'code_district',
                 8 => 'code_length',
-                default => throw new \InvalidArgumentException('Invalid parent code length')
+                default => throw new \InvalidArgumentException('Invalid parent code length'),
             };
 
-            $query->from(DB::raw("indonesia_regions FORCE INDEX (" . $this->getDbIndex($indexType) . ")"))
-                ->where('code', 'like', $parentCode . '.%')
+            $query = $this->applyIndexHint($query, $indexType)
+                ->where('code', 'like', $parentCode.'.%')
                 ->whereRaw("{$lengthFunc}(code) = ?", [
                     match ($length) {
                         2 => self::REGION_TYPES['city'],
                         5 => self::REGION_TYPES['district'],
                         8 => self::REGION_TYPES['village'],
-                        default => throw new \InvalidArgumentException('Invalid parent code length')
-                    }
+                        default => throw new \InvalidArgumentException('Invalid parent code length'),
+                    },
                 ]);
         }
 
         return $query->orderBy('name');
     }
 
+    protected function applyIndexHint(\Illuminate\Database\Eloquent\Builder $query, string $indexType): \Illuminate\Database\Eloquent\Builder
+    {
+        if (DB::getDriverName() === 'mysql') {
+            $query->from(DB::raw('indonesia_regions FORCE INDEX ('.$this->getDbIndex($indexType).')'));
+        }
+
+        return $query;
+    }
+
     protected function getCachedRegions(?string $parentCode, array $columns): Collection
     {
         $cacheKey = $this->getCacheKey('regions', $parentCode ?? 'root', $columns);
 
-        try {
-            return $this->cache()->remember($cacheKey, self::CACHE_CONFIG['ttl'], function () use ($parentCode, $columns) {
-                return $this->buildRegionQuery($parentCode)->get($columns);
-            });
-        } catch (\Exception $e) {
-            $this->handleError($e, 'Failed to retrieve cached regions');
+        return $this->rememberCache($cacheKey, function () use ($parentCode, $columns) {
             return $this->buildRegionQuery($parentCode)->get($columns);
-        }
+        });
     }
 
     protected function getDatabaseFunction(string $type): string
     {
         $driver = DB::getDriverName();
+
         return self::DB_CONFIG['functions'][$driver][$type] ?? self::DB_CONFIG['functions']['mysql'][$type];
     }
 
@@ -210,7 +265,7 @@ trait RegionHelperTrait
 
     protected function handleError(\Exception $e, string $context = ''): void
     {
-        report("[Indonesia Region] {$context}: " . $e->getMessage());
+        report("[Indonesia Region] {$context}: ".$e->getMessage());
         throw new \RuntimeException("Failed to process region data: {$context}", 0, $e);
     }
 
@@ -223,7 +278,7 @@ trait RegionHelperTrait
 
     protected function validateRegionType(?string $type): void
     {
-        if ($type && !isset(self::REGION_TYPES[$type])) {
+        if ($type && ! isset(self::REGION_TYPES[$type])) {
             throw new \InvalidArgumentException("Invalid region type: {$type}");
         }
     }
@@ -236,14 +291,16 @@ trait RegionHelperTrait
 
         foreach ($requiredFields as $field) {
             if ($isRaw) {
-                if (!isset($data->$field)) {
+                if (! isset($data->$field)) {
                     $this->handleError(new \InvalidArgumentException("Missing required field: {$field}"), 'Address Validation');
                 }
-            } else {
-                $parts = explode('.', $field);
-                if (!isset($data[$parts[0]][$parts[1]])) {
-                    $this->handleError(new \InvalidArgumentException("Missing required field: {$field}"), 'Address Validation');
-                }
+
+                continue;
+            }
+
+            $parts = explode('.', $field);
+            if (! isset($data[$parts[0]][$parts[1]])) {
+                $this->handleError(new \InvalidArgumentException("Missing required field: {$field}"), 'Address Validation');
             }
         }
     }
@@ -257,7 +314,7 @@ trait RegionHelperTrait
     protected function validateRegionCode(string $code): void
     {
         $length = strlen($code);
-        if (!in_array($length, self::REGION_TYPES)) {
+        if (! in_array($length, self::REGION_TYPES, true)) {
             throw new \InvalidArgumentException("Invalid region code length: {$length}");
         }
     }
@@ -265,7 +322,8 @@ trait RegionHelperTrait
     protected function getRegionTypeFromCode(string $code): ?string
     {
         $length = strlen($code);
-        return array_search($length, self::REGION_TYPES) ?: null;
+
+        return array_search($length, self::REGION_TYPES, true) ?: null;
     }
 
     protected function getRegionHierarchy(string $code): array
@@ -274,7 +332,7 @@ trait RegionHelperTrait
             'province' => substr($code, 0, 2),
             'city' => strlen($code) >= 5 ? substr($code, 0, 5) : null,
             'district' => strlen($code) >= 8 ? substr($code, 0, 8) : null,
-            'village' => strlen($code) === 13 ? $code : null
+            'village' => strlen($code) === 13 ? $code : null,
         ];
     }
 }
