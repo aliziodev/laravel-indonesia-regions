@@ -10,34 +10,49 @@ class IndonesiaRegionSeeder extends Seeder
 {
     public function run(): void
     {
-        // Define the path to the SQL file
-        $sqlPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'Sql' . DIRECTORY_SEPARATOR . 'indonesia_regions.sql';
+        $sqlPath = dirname(__DIR__).DIRECTORY_SEPARATOR.'Sql'.DIRECTORY_SEPARATOR.'indonesia_regions.sql';
 
-        // Check if the file exists
-        if (!File::exists($sqlPath)) {
-            $this->command->error('SQL file not found at: ' . $sqlPath);
+        if (! File::exists($sqlPath)) {
+            $this->command->error('SQL file not found at: '.$sqlPath);
+
             return;
         }
 
-        // Output start message
         $this->command->info('Starting to seed Indonesia regions from SQL...');
-
-        // Read the SQL file
-        $sql = File::get($sqlPath);
-
-        // Initialize the progress bar
-        $this->command->getOutput()->progressStart(1);
-
-        // Execute the SQL statements
-        DB::unprepared($sql);
-
-        // Update the progress bar
-        $this->command->getOutput()->progressAdvance();
-
-        // Finish the progress bar
-        $this->command->getOutput()->progressFinish();
-
-        // Output success message
         $this->command->info('Indonesia regions seeded successfully!');
+
+        $handle = fopen($sqlPath, 'rb');
+        if (! $handle) {
+            $this->command->error('Unable to read SQL file.');
+
+            return;
+        }
+
+        $statement = '';
+        $executed = 0;
+
+        while (($line = fgets($handle)) !== false) {
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                continue;
+            }
+
+            $statement .= $line;
+
+            if (str_ends_with($trimmed, ';')) {
+                DB::unprepared($statement);
+                $statement = '';
+                $executed++;
+            }
+        }
+
+        fclose($handle);
+
+        if ($statement !== '') {
+            DB::unprepared($statement);
+            $executed++;
+        }
+
+        $this->command->info("Executed {$executed} SQL statement(s).");
     }
 }

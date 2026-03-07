@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class CreateIndonesiaRegionsTable extends Migration
 {
@@ -13,16 +13,12 @@ class CreateIndonesiaRegionsTable extends Migration
             $table->string('code')->primary();
             $table->string('name');
             $table->string('postal_code')->nullable();
-            $table->decimal('latitude', 10, 8)->nullable();
-            $table->decimal('longitude', 11, 8)->nullable();
             $table->string('status')->nullable();
 
-            // Basic indexes
             $table->index('name');
             $table->index('postal_code');
         });
 
-        // Add function-based indexes based on database driver
         $driver = DB::getDriverName();
 
         switch ($driver) {
@@ -41,7 +37,6 @@ class CreateIndonesiaRegionsTable extends Migration
                 break;
 
             case 'sqlite':
-                // SQLite doesn't support function-based indexes, so we'll skip them
                 break;
 
             case 'sqlsrv':

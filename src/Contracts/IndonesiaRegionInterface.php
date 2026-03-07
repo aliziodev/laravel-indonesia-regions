@@ -3,8 +3,8 @@
 namespace Aliziodev\IndonesiaRegions\Contracts;
 
 use Aliziodev\IndonesiaRegions\Models\IndonesiaRegion;
-use Illuminate\Support\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 /**
  * Indonesia Region Service Contract
