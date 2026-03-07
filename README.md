@@ -12,7 +12,7 @@ Package ini dipertahankan sebagai package kompatibilitas untuk integrasi lama. U
 
 ## Fitur
 
--   Data wilayah Indonesia lengkap dan terupdate (sesuai dengan Kepmendagri No 100.1.1-6117 Tahun 2022)
+-   Data wilayah Indonesia lengkap dan terupdate (sesuai Kepmendagri No 300.2.2-2138 Tahun 2025)
 -   Kode pos untuk setiap desa/kelurahan
 -   Cache system untuk performa optimal
 -   Facade untuk penggunaan yang mudah
