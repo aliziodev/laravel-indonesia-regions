@@ -3,8 +3,8 @@
 namespace Aliziodev\IndonesiaRegions\Traits;
 
 use Aliziodev\IndonesiaRegions\Models\IndonesiaRegion;
-use Illuminate\Database\ConnectionInterface;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
