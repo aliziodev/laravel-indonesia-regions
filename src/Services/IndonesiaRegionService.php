@@ -198,6 +198,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
         try {
             $lengthFunc = $this->getLengthFunction();
             $substringFunc = $this->getSubstringFunction();
+            $driver = DB::getDriverName();
 
             $query = IndonesiaRegion::query()
                 ->select([
@@ -213,13 +214,20 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
                 ->join('indonesia_regions as c', DB::raw("$substringFunc(v.code, 1, 5)"), '=', 'c.code')
                 ->join('indonesia_regions as p', DB::raw("$substringFunc(v.code, 1, 2)"), '=', 'p.code')
                 ->whereRaw("$lengthFunc(v.code) = ?", [self::REGION_TYPES['village']])
-                ->where(function ($q) use ($term) {
-                    $q->where('v.name', 'like', '%'.$term.'%')
-                        ->orWhere('d.name', 'like', '%'.$term.'%')
-                        ->orWhere('c.name', 'like', '%'.$term.'%')
-                        ->orWhere('p.name', 'like', '%'.$term.'%');
-                })
+                ->whereNotNull('v.search_text')
                 ->limit(min($limit, self::QUERY_CONFIG['max_results']));
+
+            if ($driver === 'pgsql') {
+                $query
+                    ->whereRaw("to_tsvector('simple', COALESCE(v.search_text, '')) @@ plainto_tsquery('simple', ?)", [$term])
+                    ->orderByRaw("ts_rank(to_tsvector('simple', COALESCE(v.search_text, '')), plainto_tsquery('simple', ?)) DESC", [$term]);
+            } elseif ($driver === 'mysql') {
+                $query
+                    ->whereRaw('MATCH(v.search_text) AGAINST (? IN NATURAL LANGUAGE MODE)', [$term])
+                    ->orderByRaw('MATCH(v.search_text) AGAINST (? IN NATURAL LANGUAGE MODE) DESC', [$term]);
+            } else {
+                $this->applyCaseInsensitiveLike($query, 'v.search_text', $term);
+            }
 
             return $this->handleLargeDataset($query->get(), function ($item) use ($countryName) {
                 return [
@@ -262,7 +270,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
 
             // Build search conditions
             $query->where(function ($q) use ($term, $type, $lengthFunc) {
-                $q->where('name', 'like', '%'.$term.'%');
+                $this->applyCaseInsensitiveLike($q, 'name', $term);
 
                 if (is_numeric($term) && ($type === 'village' || $type === null)) {
                     $q->orWhere(function ($sq) use ($term, $lengthFunc) {

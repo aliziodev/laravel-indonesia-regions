@@ -22,6 +22,13 @@ trait RegionHelperTrait
 
     protected const DEFAULT_COUNTRY = 'Indonesia';
 
+    protected const ALLOWED_COUNTRIES = [
+        'Indonesia' => 'Indonesia',
+        'indonesia' => 'Indonesia',
+        'ID' => 'ID',
+        'id' => 'ID',
+    ];
+
     protected const REGION_TYPES = [
         'province' => 2,
         'city' => 5,
@@ -182,6 +189,7 @@ trait RegionHelperTrait
 
     protected function buildFullAddress(array|object $data, ?string $countryName = self::DEFAULT_COUNTRY, bool $isRaw = false): string
     {
+        $countryName = $this->normalizeCountryName($countryName);
         $parts = $this->buildAddressParts($data, $isRaw);
 
         $addressParts = array_filter([
@@ -194,6 +202,19 @@ trait RegionHelperTrait
         ]);
 
         return implode(', ', $addressParts);
+    }
+
+    protected function normalizeCountryName(?string $countryName): string
+    {
+        if ($countryName === null || $countryName === '') {
+            return self::DEFAULT_COUNTRY;
+        }
+
+        if (! isset(self::ALLOWED_COUNTRIES[$countryName])) {
+            throw new \InvalidArgumentException('Invalid country name. Allowed values: Indonesia, ID');
+        }
+
+        return self::ALLOWED_COUNTRIES[$countryName];
     }
 
     protected function buildRegionQuery(?string $parentCode): \Illuminate\Database\Eloquent\Builder
@@ -261,6 +282,21 @@ trait RegionHelperTrait
     protected function getSubstringFunction(): string
     {
         return $this->getDatabaseFunction('substring');
+    }
+
+    protected function applyCaseInsensitiveLike(\Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder $query, string $column, string $term, string $boolean = 'and'): void
+    {
+        $pattern = '%'.$term.'%';
+
+        if (DB::getDriverName() === 'pgsql') {
+            $method = $boolean === 'or' ? 'orWhere' : 'where';
+            $query->{$method}($column, 'ilike', $pattern);
+
+            return;
+        }
+
+        $method = $boolean === 'or' ? 'orWhereRaw' : 'whereRaw';
+        $query->{$method}('LOWER('.$column.') LIKE ?', [mb_strtolower($pattern)]);
     }
 
     protected function handleError(\Exception $e, string $context = ''): void

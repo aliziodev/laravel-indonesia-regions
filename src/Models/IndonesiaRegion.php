@@ -21,5 +21,6 @@ class IndonesiaRegion extends Model
         'name',
         'postal_code',
         'status',
+        'search_text',
     ];
 }
