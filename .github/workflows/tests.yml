@@ -42,10 +42,14 @@ jobs:
           composer require --dev --no-update \
             "illuminate/support:${{ matrix.laravel }}" \
             "illuminate/database:${{ matrix.laravel }}" \
+            "illuminate/routing:${{ matrix.laravel }}" \
             "orchestra/testbench:${{ matrix.testbench }}" \
             "pestphp/pest:${{ matrix.pest }}" \
             "pestphp/pest-plugin-laravel:${{ matrix.pest_laravel }}"
           composer update --prefer-dist --no-progress --with-all-dependencies
+
+      - name: Run Pint
+        run: vendor/bin/pint --test
 
       - name: Run tests
         run: vendor/bin/pest
