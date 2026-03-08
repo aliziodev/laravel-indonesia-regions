@@ -13,8 +13,7 @@ class IndonesiaRegionController extends Controller
     public function __construct(
         protected IndonesiaRegionInterface $regions,
         protected ApiResponderInterface $responder
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {

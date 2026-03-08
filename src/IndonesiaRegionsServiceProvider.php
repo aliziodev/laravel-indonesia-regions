@@ -6,9 +6,9 @@ use Aliziodev\IndonesiaRegions\Contracts\ApiResponderInterface;
 use Aliziodev\IndonesiaRegions\Contracts\IndonesiaRegionInterface;
 use Aliziodev\IndonesiaRegions\Services\IndonesiaRegionService;
 use Aliziodev\IndonesiaRegions\Support\JsonApiResponder;
-use InvalidArgumentException;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use InvalidArgumentException;
 
 class IndonesiaRegionsServiceProvider extends ServiceProvider
 {
