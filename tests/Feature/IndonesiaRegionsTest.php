@@ -1,13 +1,13 @@
 <?php
 
-use Aliziodev\IndonesiaRegions\Facades\Indonesia;
 use Aliziodev\IndonesiaRegions\Commands\InstallCommand;
 use Aliziodev\IndonesiaRegions\Commands\SyncCommand;
 use Aliziodev\IndonesiaRegions\Database\Seeders\IndonesiaRegionSeeder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
+use Aliziodev\IndonesiaRegions\Facades\Indonesia;
 use Illuminate\Console\OutputStyle;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -324,7 +324,7 @@ test('install command memanggil publish migrate dan seed', function () {
         ->andReturn(0);
 
     $command->setLaravel($this->app);
-    $command->setOutput(new OutputStyle(new ArrayInput([]), new BufferedOutput()));
+    $command->setOutput(new OutputStyle(new ArrayInput([]), new BufferedOutput));
 
     expect($command->handle())->toBeNull();
 });
@@ -344,7 +344,7 @@ test('sync command memanggil seeder package', function () {
         ->andReturn(true);
 
     $command->setLaravel($this->app);
-    $command->setOutput(new OutputStyle(new ArrayInput([]), new BufferedOutput()));
+    $command->setOutput(new OutputStyle(new ArrayInput([]), new BufferedOutput));
 
     expect($command->handle())->toBe(0);
 });
@@ -368,7 +368,7 @@ test('sync command membersihkan cache setelah seeder berhasil', function () {
         ->passthru();
 
     $command->setLaravel($this->app);
-    $command->setOutput(new OutputStyle(new ArrayInput([]), new BufferedOutput()));
+    $command->setOutput(new OutputStyle(new ArrayInput([]), new BufferedOutput));
 
     expect($command->handle())->toBe(0)
         ->and(Cache::store('array')->get('external.key'))->toBe('keep');
@@ -389,7 +389,7 @@ test('sync command gagal jika clear cache gagal', function () {
         ->andReturn(false);
 
     $command->setLaravel($this->app);
-    $command->setOutput(new OutputStyle(new ArrayInput([]), new BufferedOutput()));
+    $command->setOutput(new OutputStyle(new ArrayInput([]), new BufferedOutput));
 
     expect($command->handle())->toBe(1);
 });
@@ -438,7 +438,7 @@ PHP);
             'status' => 'inactive',
         ]);
 
-    (new IndonesiaRegionSeeder())->run();
+    (new IndonesiaRegionSeeder)->run();
 
     expect(DB::table('indonesia_regions')->where('code', '11')->value('name'))->toBe('ACEH BARU')
         ->and(DB::table('indonesia_regions')->where('code', '11')->value('status'))->toBe('active')
