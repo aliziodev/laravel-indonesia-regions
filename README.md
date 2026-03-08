@@ -8,7 +8,7 @@
 
 Package Laravel untuk data wilayah Indonesia lengkap dengan kode pos. Package ini menyediakan data provinsi, kota/kabupaten, kecamatan, dan desa/kelurahan.
 
-Package ini dipertahankan sebagai package kompatibilitas untuk integrasi lama. Untuk ekosistem data terbaru, sumber pengembangan utama berada di `aliziodev/laravel-wilayah` beserta addon terkait.
+Package ini dipertahankan sebagai package kompatibilitas untuk integrasi lama. Dataset package ini disinkronkan dari repo upstream `aliziodev/laravel-wilayah` dan disimpan sebagai file PHP agar install dan update tetap lintas database.
 
 ## Fitur
 
@@ -23,7 +23,10 @@ Package ini dipertahankan sebagai package kompatibilitas untuk integrasi lama. U
 -   Hirarki/Info wilayah
 -   Format untuk dropdown/select
 -   Pagination support
--   Kustomisasi nama negara
+-   Format nama negara terbatas ke `Indonesia` atau `ID`
+-   Sync dataset via command setelah `composer update`
+-   Pencarian case-insensitive termasuk di PostgreSQL
+-   Endpoint API bawaan yang siap dipakai
 
 ## Instalasi
 
@@ -37,10 +40,346 @@ Kemudian jalankan command instalasi:
 php artisan indonesia-regions:install
 ```
 
+Untuk menyinkronkan dataset terbaru setelah package diupdate:
+
+```bash
+php artisan indonesia-regions:sync
+```
+
 Opsional, publish konfigurasi cache package:
 
 ```bash
 php artisan vendor:publish --tag=indonesia-regions-config
+```
+
+## Sumber Data
+
+Data package ini digenerate dari repo upstream berikut:
+
+```text
+https://github.com/aliziodev/laravel-wilayah
+```
+
+Saat workflow sync berjalan, package akan mengambil dataset dari repo upstream tersebut, menyalinnya ke folder `data/`, lalu aplikasi pengguna cukup menjalankan `php artisan indonesia-regions:sync` untuk melakukan `upsert` ke database.
+
+## API Bawaan
+
+Package ini menyediakan endpoint API bawaan tanpa perlu membuat controller sendiri. Secara default route akan aktif dengan prefix:
+
+```text
+/api/indonesia-regions
+```
+
+Konfigurasi tersedia di `config/indonesia-regions.php`:
+
+```php
+'api' => [
+    'enabled' => true,
+    'prefix' => 'api/indonesia-regions',
+    'middleware' => ['api'],
+    'responder' => null,
+],
+```
+
+Jika aplikasi Anda memiliki wrapper response sendiri, Anda bisa mengganti responder bawaan package:
+
+```php
+'api' => [
+    'enabled' => true,
+    'prefix' => 'api/indonesia-regions',
+    'middleware' => ['api'],
+    'responder' => App\Support\Api\RegionApiResponder::class,
+],
+```
+
+Class tersebut harus mengimplementasikan `Aliziodev\IndonesiaRegions\Contracts\ApiResponderInterface`.
+
+Contoh implementasi:
+
+```php
+<?php
+
+namespace App\Support\Api;
+
+use Aliziodev\IndonesiaRegions\Contracts\ApiResponderInterface;
+use Illuminate\Http\JsonResponse;
+
+class RegionApiResponder implements ApiResponderInterface
+{
+    public function respond(mixed $data, int $status = 200): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ], $status);
+    }
+}
+```
+
+Contoh jika aplikasi Anda sudah punya helper seperti `ApiResponse`:
+
+```php
+<?php
+
+namespace App\Support\Api;
+
+use Aliziodev\IndonesiaRegions\Contracts\ApiResponderInterface;
+use Illuminate\Http\JsonResponse;
+
+class RegionApiResponder implements ApiResponderInterface
+{
+    public function respond(mixed $data, int $status = 200): JsonResponse
+    {
+        return ApiResponse::success($data, status: $status);
+    }
+}
+```
+
+Endpoint yang tersedia:
+
+- `GET /api/indonesia-regions`
+- `GET /api/indonesia-regions/cascade`
+- `GET /api/indonesia-regions/select`
+- `GET /api/indonesia-regions/search?term=bakongan`
+- `GET /api/indonesia-regions/search/address?term=bakongan`
+- `GET /api/indonesia-regions/search/full-text?term=aceh`
+- `GET /api/indonesia-regions/postal-code/23773`
+- `GET /api/indonesia-regions/11.01.01.2001`
+- `GET /api/indonesia-regions/11.01.01.2001/info`
+- `GET /api/indonesia-regions/11.01.01.2001/select-context`
+- `GET /api/indonesia-regions/11.01.01.2001/full-address?country_name=ID`
+
+Contoh endpoint options untuk frontend:
+
+```text
+GET /api/indonesia-regions/select
+GET /api/indonesia-regions/select?parent_code=11
+GET /api/indonesia-regions/select?format=map
+```
+
+Response default:
+
+```json
+[
+  { "value": "11", "label": "ACEH" }
+]
+```
+
+Response `format=map`:
+
+```json
+{
+  "11": "ACEH"
+}
+```
+
+Untuk frontend yang ingin langsung mendapat semua options bertingkat sekaligus, gunakan endpoint cascade:
+
+```text
+GET /api/indonesia-regions/cascade
+GET /api/indonesia-regions/cascade?region_code=11.01.01.2001
+GET /api/indonesia-regions/cascade?region_code=11.01.01.2001&country_name=ID
+```
+
+Response:
+
+```json
+{
+  "selected": {
+    "province": { "value": "11", "label": "Aceh" },
+    "city": { "value": "11.01", "label": "Kab. Aceh Selatan" },
+    "district": { "value": "11.01.01", "label": "Bakongan" },
+    "village": { "value": "11.01.01.2001", "label": "Keude Bakongan", "postal_code": "23773" }
+  },
+  "options": {
+    "provinces": [
+      { "value": "11", "label": "ACEH" }
+    ],
+    "cities": [
+      { "value": "11.01", "label": "KAB. ACEH SELATAN" }
+    ],
+    "districts": [
+      { "value": "11.01.01", "label": "BAKONGAN" }
+    ],
+    "villages": [
+      { "value": "11.01.01.2001", "label": "KEUDE BAKONGAN" }
+    ]
+  },
+  "full_address": "Keude Bakongan, Bakongan, Kab. Aceh Selatan, Aceh, ID, 23773"
+}
+```
+
+Contoh helper untuk prefill cascading select dari `region_code` yang sudah tersimpan:
+
+```text
+GET /api/indonesia-regions/11.01.01.2001/select-context
+GET /api/indonesia-regions/11.01.01.2001/select-context?country_name=ID
+```
+
+Response:
+
+```json
+{
+  "selected": {
+    "province": { "value": "11", "label": "Aceh" },
+    "city": { "value": "11.01", "label": "Kab. Aceh Selatan" },
+    "district": { "value": "11.01.01", "label": "Bakongan" },
+    "village": { "value": "11.01.01.2001", "label": "Keude Bakongan", "postal_code": "23773" }
+  },
+  "full_address": "Keude Bakongan, Bakongan, Kab. Aceh Selatan, Aceh, Indonesia, 23773"
+}
+```
+
+### Contoh Lengkap API dengan Wilayah Bandung
+
+Contoh kode wilayah yang digunakan:
+
+- `32` : Jawa Barat
+- `32.73` : Kota Bandung
+- `32.73.02` : Coblong
+- `32.73.02.1001` : Dago
+
+Ambil daftar kota/kabupaten di Jawa Barat:
+
+```http
+GET /api/indonesia-regions?parent_code=32
+```
+
+Ambil options kota/kabupaten untuk dropdown:
+
+```http
+GET /api/indonesia-regions/select?parent_code=32
+```
+
+Atau ambil seluruh context cascade sekaligus:
+
+```http
+GET /api/indonesia-regions/cascade?region_code=32.73.02.1001
+```
+
+Response:
+
+```json
+[
+  { "value": "32.73", "label": "KOTA BANDUNG" },
+  { "value": "32.04", "label": "KAB. BANDUNG" }
+]
+```
+
+Cari wilayah dengan kata kunci Bandung:
+
+```http
+GET /api/indonesia-regions/search?term=bandung
+```
+
+Cari hanya level kota/kabupaten:
+
+```http
+GET /api/indonesia-regions/search?term=bandung&type=city
+```
+
+Cari full text, hasil selalu village:
+
+```http
+GET /api/indonesia-regions/search/full-text?term=bandung
+GET /api/indonesia-regions/search/full-text?term=coblong
+GET /api/indonesia-regions/search/full-text?term=dago&country_name=ID
+```
+
+Contoh response:
+
+```json
+[
+  {
+    "code": "32.73.02.1001",
+    "province": "Jawa Barat",
+    "city": "Kota Bandung",
+    "district": "Coblong",
+    "village": "Dago",
+    "postal_code": "40135",
+    "full_address": "Dago, Coblong, Kota Bandung, Jawa Barat, ID, 40135"
+  }
+]
+```
+
+Ambil detail region berdasarkan kode:
+
+```http
+GET /api/indonesia-regions/32.73
+GET /api/indonesia-regions/32.73.02.1001
+```
+
+Ambil hierarchy lengkap berdasarkan `region_code`:
+
+```http
+GET /api/indonesia-regions/32.73.02.1001/info
+GET /api/indonesia-regions/32.73.02.1001/info?country_name=ID
+```
+
+Contoh response:
+
+```json
+{
+  "province": {
+    "code": "32",
+    "name": "Jawa Barat"
+  },
+  "city": {
+    "code": "32.73",
+    "name": "Kota Bandung"
+  },
+  "district": {
+    "code": "32.73.02",
+    "name": "Coblong"
+  },
+  "village": {
+    "code": "32.73.02.1001",
+    "name": "Dago",
+    "postal_code": "40135"
+  },
+  "full_address": "Dago, Coblong, Kota Bandung, Jawa Barat, Indonesia, 40135"
+}
+```
+
+Ambil alamat lengkap saja:
+
+```http
+GET /api/indonesia-regions/32.73.02.1001/full-address
+GET /api/indonesia-regions/32.73.02.1001/full-address?country_name=ID
+```
+
+Response:
+
+```json
+{
+  "full_address": "Dago, Coblong, Kota Bandung, Jawa Barat, ID, 40135"
+}
+```
+
+Ambil region dari kode pos:
+
+```http
+GET /api/indonesia-regions/postal-code/40135
+```
+
+Prefill cascading select dari `region_code` yang sudah tersimpan:
+
+```http
+GET /api/indonesia-regions/32.73.02.1001/select-context
+```
+
+Response:
+
+```json
+{
+  "selected": {
+    "province": { "value": "32", "label": "Jawa Barat" },
+    "city": { "value": "32.73", "label": "Kota Bandung" },
+    "district": { "value": "32.73.02", "label": "Coblong" },
+    "village": { "value": "32.73.02.1001", "label": "Dago", "postal_code": "40135" }
+  },
+  "full_address": "Dago, Coblong, Kota Bandung, Jawa Barat, Indonesia, 40135"
+}
 ```
 
 ## Gaya Penulisan Parameter
@@ -134,6 +473,10 @@ use Aliziodev\IndonesiaRegions\Facades\Indonesia;
 // Pencarian umum
 $results = Indonesia::search('Bakongan');
 
+// Search bersifat case-insensitive, termasuk di PostgreSQL
+$results = Indonesia::search('bakongan');
+$results = Indonesia::search('BAKONGAN');
+
 // Response:
 [
     {
@@ -203,8 +546,8 @@ $results = Indonesia::searchWithAddress(
 
 // Response dengan pagination sama dengan format getRegions()
 
-// Menggunakan nama negara kustom
-$results = Indonesia::searchWithAddress('Bakongan', null, null, null, 'Republic of Indonesia');
+// Menggunakan nama negara singkat
+$results = Indonesia::searchWithAddress('Bakongan', null, null, null, 'ID');
 
 ```
 
@@ -219,11 +562,11 @@ $results = Indonesia::searchWithFullText('Bakongan');
 // Pencarian dengan limit kustom
 $results = Indonesia::searchWithFullText('Bakongan', 25);
 
-// Pencarian dengan nama negara kustom
+// Pencarian dengan nama negara singkat
 $results = Indonesia::searchWithFullText(
     term: 'Bakongan',
     limit: 25,
-    countryName: 'Republic of Indonesia'
+    countryName: 'ID'
 );
 
 // Response:
@@ -235,11 +578,18 @@ $results = Indonesia::searchWithFullText(
         "district": "BAKONGAN",
         "village": "KEUDE BAKONGAN",
         "postal_code": "23773",
-        "full_address": "KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, REPUBLIC OF INDONESIA, 23773"
+        "full_address": "KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, ID, 23773"
     }
     // ... more results
 ]
 ```
+
+Metode ini selalu mengembalikan hasil pada level `village`. Kata kunci dapat berasal dari nama village, district, city, province, atau postal code, tetapi hasil akhirnya tetap berupa data village lengkap dengan hirarkinya.
+
+Nilai `countryName` yang didukung hanya:
+
+- `Indonesia` (default)
+- `ID`
 
 ### Mencari Berdasarkan Kode (findByCode)
 
@@ -314,10 +664,10 @@ $info = Indonesia::getRegionInfo('11.01.01.2001');
     "full_address": "KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, 23773"
 }
 
-// Menggunakan nama negara kustom
-$info = Indonesia::getRegionInfo('11.01.01.2001', null, 'Republic of Indonesia');
-// Response akan menggunakan nama negara yang dikustomisasi
-"KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, Republic of Indonesia, 23773"
+// Menggunakan nama negara singkat
+$info = Indonesia::getRegionInfo('11.01.01.2001', null, 'ID');
+// Response akan menggunakan nama negara yang dipilih
+"KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, ID, 23773"
 ```
 
 ### Alamat Lengkap (getFullAddress)
@@ -329,10 +679,10 @@ $address = Indonesia::getFullAddress('11.01.01.2001');
 "KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, 23773"
 
 
-// Menggunakan nama negara kustom
-$address = Indonesia::getFullAddress('11.01.01.2001', 'Republic of Indonesia');
-// Response akan menggunakan nama negara yang dikustomisasi
-"KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, Republic of Indonesia, 23773"
+// Menggunakan nama negara singkat
+$address = Indonesia::getFullAddress('11.01.01.2001', 'ID');
+// Response akan menggunakan nama negara yang dipilih
+"KEUDE BAKONGAN, BAKONGAN, KAB. ACEH SELATAN, ACEH, ID, 23773"
 ```
 
 ### Pencarian Kode Pos (findByPostalCode)
@@ -385,6 +735,7 @@ Pengaturan cache dapat dikustomisasi melalui `config/indonesia-regions.php`.
 -   name : Nama wilayah
 -   postal_code : Kode pos (untuk desa/kelurahan)
 -   status : Status wilayah aktif/tidak aktif (optional)
+-   search_text : Kolom internal untuk optimasi `searchWithFullText()` pada level village
 
 ## Method Parameters
 
@@ -406,13 +757,14 @@ Pengaturan cache dapat dikustomisasi melalui `config/indonesia-regions.php`.
 -   `type` (string|null) : Tipe wilayah ('province'|'city'|'district'|'village')
 -   `perPage` (int|null) : Jumlah data per halaman untuk pagination (opsional)
 -   `columns` (array|null) : Kolom yang akan diambil
--   `countryName` (string|null) : Nama negara untuk alamat lengkap (default: 'Indonesia')
+-   `countryName` (string|null) : Nama negara untuk alamat lengkap. Nilai yang didukung hanya `Indonesia` atau `ID` (default: `Indonesia`)
 
 ### searchWithFullText
 
 -   `term` (string) : Kata kunci pencarian
 -   `limit` (int|null) : Batas jumlah hasil pencarian (default: 15)
--   `countryName` (string|null) : Nama negara untuk alamat lengkap (default: 'Indonesia')
+-   `countryName` (string|null) : Nama negara untuk alamat lengkap. Nilai yang didukung hanya `Indonesia` atau `ID` (default: `Indonesia`)
+-   Catatan: hasil selalu dikembalikan pada level `village`
 
 ### findByCode
 
@@ -427,12 +779,12 @@ Pengaturan cache dapat dikustomisasi melalui `config/indonesia-regions.php`.
 
 -   `code` (string) : Kode wilayah
 -   `columns` (array|null) : Kolom yang akan diambil (default: ['code', 'name', 'postal_code'])
--   `countryName` (string|null) : Nama negara untuk alamat lengkap (default: 'Indonesia')
+-   `countryName` (string|null) : Nama negara untuk alamat lengkap. Nilai yang didukung hanya `Indonesia` atau `ID` (default: `Indonesia`)
 
 ### getFullAddress
 
 -   `villageCode` (string) : Kode desa/kelurahan
--   `countryName` (string|null) : Nama negara untuk alamat lengkap (default: 'Indonesia')
+-   `countryName` (string|null) : Nama negara untuk alamat lengkap. Nilai yang didukung hanya `Indonesia` atau `ID` (default: `Indonesia`)
 
 ### findByPostalCode
 
@@ -447,8 +799,8 @@ Pengaturan cache dapat dikustomisasi melalui `config/indonesia-regions.php`.
 -   `code` (string) : Kode wilayah
 
 ## Ucapan Terima Kasih
+Data wilayah pada package ini pada dasarnya berasal dari [cahyadsn/wilayah](https://github.com/cahyadsn/wilayah). Data tersebut kemudian diolah dan dipelihara lebih lanjut melalui repo upstream [aliziodev/laravel-wilayah](https://github.com/aliziodev/laravel-wilayah), lalu disinkronkan ke package ini.
 
-Package ini menggunakan data wilayah dari [cahyadsn/wilayah](https://github.com/cahyadsn/wilayah) . Terima kasih kepada [@cahyadsn](https://github.com/cahyadsn) yang telah menyediakan dan memelihara data wilayah Indonesia.
 
 ## Kontribusi
 
