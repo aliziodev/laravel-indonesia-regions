@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'data_path' => env('INDONESIA_REGIONS_DATA_PATH', __DIR__.'/../data'),
+    'data_path' => base_path('vendor/aliziodev/laravel-indonesia-regions/data'),
 
     'database' => [
         'connection' => env('INDONESIA_REGIONS_DB_CONNECTION'),
