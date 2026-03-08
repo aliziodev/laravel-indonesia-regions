@@ -3,6 +3,10 @@
 return [
     'data_path' => env('INDONESIA_REGIONS_DATA_PATH', __DIR__.'/../data'),
 
+    'database' => [
+        'connection' => env('INDONESIA_REGIONS_DB_CONNECTION'),
+    ],
+
     'api' => [
         'enabled' => env('INDONESIA_REGIONS_API_ENABLED', true),
         'prefix' => env('INDONESIA_REGIONS_API_PREFIX', 'api/indonesia-regions'),

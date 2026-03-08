@@ -198,7 +198,7 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
         try {
             $lengthFunc = $this->getLengthFunction();
             $substringFunc = $this->getSubstringFunction();
-            $driver = DB::getDriverName();
+            $driver = $this->getRegionDatabaseDriver();
 
             $query = IndonesiaRegion::query()
                 ->select([

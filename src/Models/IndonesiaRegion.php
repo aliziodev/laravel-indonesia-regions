@@ -23,4 +23,9 @@ class IndonesiaRegion extends Model
         'status',
         'search_text',
     ];
+
+    public function getConnectionName()
+    {
+        return config('indonesia-regions.database.connection') ?: parent::getConnectionName();
+    }
 }

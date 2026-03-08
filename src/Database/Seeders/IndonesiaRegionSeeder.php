@@ -2,8 +2,8 @@
 
 namespace Aliziodev\IndonesiaRegions\Database\Seeders;
 
+use Aliziodev\IndonesiaRegions\Models\IndonesiaRegion;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
 
@@ -25,7 +25,7 @@ class IndonesiaRegionSeeder extends Seeder
         $rows = $this->loadRows($paths);
 
         foreach (array_chunk($rows, 1000) as $chunk) {
-            DB::table('indonesia_regions')->upsert(
+            IndonesiaRegion::query()->upsert(
                 $chunk,
                 ['code'],
                 ['name', 'postal_code', 'status', 'search_text']

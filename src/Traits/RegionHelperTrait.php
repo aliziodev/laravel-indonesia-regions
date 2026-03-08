@@ -3,6 +3,7 @@
 namespace Aliziodev\IndonesiaRegions\Traits;
 
 use Aliziodev\IndonesiaRegions\Models\IndonesiaRegion;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -74,6 +75,23 @@ trait RegionHelperTrait
     protected function getDbIndex(string $type): string
     {
         return self::DB_INDEXES[$type] ?? self::DB_INDEXES['code_length'];
+    }
+
+    protected function getRegionConnectionName(): ?string
+    {
+        $connection = config('indonesia-regions.database.connection');
+
+        return is_string($connection) && $connection !== '' ? $connection : null;
+    }
+
+    protected function getRegionConnection(): ConnectionInterface
+    {
+        return DB::connection($this->getRegionConnectionName());
+    }
+
+    protected function getRegionDatabaseDriver(): string
+    {
+        return $this->getRegionConnection()->getDriverName();
     }
 
     protected function cache(): CacheRepository
@@ -251,7 +269,7 @@ trait RegionHelperTrait
 
     protected function applyIndexHint(\Illuminate\Database\Eloquent\Builder $query, string $indexType): \Illuminate\Database\Eloquent\Builder
     {
-        if (DB::getDriverName() === 'mysql') {
+        if ($this->getRegionDatabaseDriver() === 'mysql') {
             $query->from(DB::raw('indonesia_regions FORCE INDEX ('.$this->getDbIndex($indexType).')'));
         }
 
@@ -269,7 +287,7 @@ trait RegionHelperTrait
 
     protected function getDatabaseFunction(string $type): string
     {
-        $driver = DB::getDriverName();
+        $driver = $this->getRegionDatabaseDriver();
 
         return self::DB_CONFIG['functions'][$driver][$type] ?? self::DB_CONFIG['functions']['mysql'][$type];
     }
@@ -288,7 +306,7 @@ trait RegionHelperTrait
     {
         $pattern = '%'.$term.'%';
 
-        if (DB::getDriverName() === 'pgsql') {
+        if ($this->getRegionDatabaseDriver() === 'pgsql') {
             $method = $boolean === 'or' ? 'orWhere' : 'where';
             $query->{$method}($column, 'ilike', $pattern);
 

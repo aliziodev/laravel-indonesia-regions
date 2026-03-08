@@ -16,10 +16,16 @@ class SyncCommand extends Command
     {
         $this->info('Syncing Indonesia Regions dataset...');
 
-        $seedStatus = $this->call('db:seed', [
+        $parameters = [
             '--class' => IndonesiaRegionSeeder::class,
             '--force' => (bool) $this->option('force'),
-        ]);
+        ];
+
+        if ($connection = config('indonesia-regions.database.connection')) {
+            $parameters['--database'] = $connection;
+        }
+
+        $seedStatus = $this->call('db:seed', $parameters);
 
         if ($seedStatus !== self::SUCCESS) {
             $this->error('Indonesia Regions sync failed during database seeding.');
