@@ -6,6 +6,7 @@ use Aliziodev\IndonesiaRegions\Models\IndonesiaRegion;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
+use Symfony\Component\Console\Helper\ProgressBar;
 
 class IndonesiaRegionSeeder extends Seeder
 {
@@ -23,16 +24,39 @@ class IndonesiaRegionSeeder extends Seeder
         $this->command?->info('Starting to sync Indonesia regions from PHP dataset...');
 
         $rows = $this->loadRows($paths);
+        $chunks = array_chunk($rows, 1000);
+        $total = count($rows);
+        $totalChunks = count($chunks);
 
-        foreach (array_chunk($rows, 1000) as $chunk) {
+        $this->command?->info("Total rows   : {$total}");
+        $this->command?->info("Total chunks : {$totalChunks} (1.000 rows/chunk)");
+        $this->command?->newLine();
+
+        /** @var ProgressBar|null $bar */
+        $bar = $this->command?->getOutput()->createProgressBar($total);
+        $bar?->setFormat(
+            " %current%/%max% [%bar%] %percent:3s%%\n".
+            " Chunk: %chunk% | Elapsed: %elapsed:6s% | Remaining: %estimated:-6s%\n"
+        );
+        $bar?->setMessage('0/'.$totalChunks, 'chunk');
+        $bar?->start();
+
+        foreach ($chunks as $i => $chunk) {
             IndonesiaRegion::query()->upsert(
                 $chunk,
                 ['code'],
                 ['name', 'postal_code', 'status', 'search_text']
             );
+
+            $bar?->setMessage(($i + 1).'/'.$totalChunks, 'chunk');
+            $bar?->advance(count($chunk));
         }
 
-        $this->command?->info('Upserted '.count($rows).' region rows.');
+        $bar?->finish();
+
+        $this->command?->newLine(1);
+        $this->command?->info("✓ Successfully upserted {$total} region rows.");
+        $this->command?->newLine(1);
     }
 
     /**

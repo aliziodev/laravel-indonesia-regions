@@ -39,9 +39,6 @@ class SyncCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info('Indonesia Regions synced successfully!');
-        $this->info('Indonesia Regions cache cleared successfully!');
-
         return self::SUCCESS;
     }
 
