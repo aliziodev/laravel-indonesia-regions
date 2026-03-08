@@ -5,54 +5,141 @@ namespace Aliziodev\IndonesiaRegions\Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use RuntimeException;
 
 class IndonesiaRegionSeeder extends Seeder
 {
     public function run(): void
     {
-        $sqlPath = dirname(__DIR__).DIRECTORY_SEPARATOR.'Sql'.DIRECTORY_SEPARATOR.'indonesia_regions.sql';
+        $dataPath = (string) config('indonesia-regions.data_path', dirname(__DIR__, 3).DIRECTORY_SEPARATOR.'data');
+        $paths = $this->datasetPaths($dataPath);
 
-        if (! File::exists($sqlPath)) {
-            $this->command->error('SQL file not found at: '.$sqlPath);
-
-            return;
-        }
-
-        $this->command->info('Starting to seed Indonesia regions from SQL...');
-        $this->command->info('Indonesia regions seeded successfully!');
-
-        $handle = fopen($sqlPath, 'rb');
-        if (! $handle) {
-            $this->command->error('Unable to read SQL file.');
+        if ($paths === []) {
+            $this->command?->error('Dataset files not found in: '.$dataPath);
 
             return;
         }
 
-        $statement = '';
-        $executed = 0;
+        $this->command?->info('Starting to sync Indonesia regions from PHP dataset...');
 
-        while (($line = fgets($handle)) !== false) {
-            $trimmed = trim($line);
-            if ($trimmed === '') {
+        $rows = $this->loadRows($paths);
+
+        foreach (array_chunk($rows, 1000) as $chunk) {
+            DB::table('indonesia_regions')->upsert(
+                $chunk,
+                ['code'],
+                ['name', 'postal_code', 'status', 'search_text']
+            );
+        }
+
+        $this->command?->info('Upserted '.count($rows).' region rows.');
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function datasetPaths(string $dataPath): array
+    {
+        $paths = [];
+
+        foreach ([
+            $dataPath.DIRECTORY_SEPARATOR.'provinces.php',
+            $dataPath.DIRECTORY_SEPARATOR.'regencies.php',
+        ] as $path) {
+            if (File::exists($path)) {
+                $paths[] = $path;
+            }
+        }
+
+        foreach (['districts', 'villages'] as $directory) {
+            $glob = glob($dataPath.DIRECTORY_SEPARATOR.$directory.DIRECTORY_SEPARATOR.'*.php') ?: [];
+
+            sort($glob);
+
+            foreach ($glob as $path) {
+                $paths[] = $path;
+            }
+        }
+
+        return $paths;
+    }
+
+    /**
+     * @param  list<string>  $paths
+     * @return list<array{code:string,name:string,postal_code:?string,status:string,search_text:?string}>
+     */
+    protected function loadRows(array $paths): array
+    {
+        $rows = [];
+
+        foreach ($paths as $path) {
+            $data = require $path;
+
+            if (! is_array($data)) {
+                throw new RuntimeException("Dataset file must return an array: {$path}");
+            }
+
+            foreach ($data as $row) {
+                if (! is_array($row) || ! isset($row['code'], $row['name'])) {
+                    continue;
+                }
+
+                $rows[(string) $row['code']] = [
+                    'code' => (string) $row['code'],
+                    'name' => mb_strtoupper((string) $row['name']),
+                    'postal_code' => isset($row['postal_code']) && $row['postal_code'] !== ''
+                        ? (string) $row['postal_code']
+                        : null,
+                    'status' => 'active',
+                    'search_text' => null,
+                ];
+            }
+        }
+
+        foreach ($rows as $code => &$row) {
+            if (strlen($code) !== 13) {
                 continue;
             }
 
-            $statement .= $line;
+            $row['search_text'] = $this->buildSearchText($code, $rows);
+        }
+        unset($row);
 
-            if (str_ends_with($trimmed, ';')) {
-                DB::unprepared($statement);
-                $statement = '';
-                $executed++;
-            }
+        ksort($rows);
+
+        return array_values($rows);
+    }
+
+    /**
+     * @param  array<string,array{code:string,name:string,postal_code:?string,status:string,search_text:?string}>  $rows
+     */
+    protected function buildSearchText(string $code, array $rows): string
+    {
+        $village = $rows[$code] ?? null;
+        $district = $rows[substr($code, 0, 8)] ?? null;
+        $city = $rows[substr($code, 0, 5)] ?? null;
+        $province = $rows[substr($code, 0, 2)] ?? null;
+
+        $parts = array_filter([
+            $this->normalizeSearchSegment($village['name'] ?? null),
+            $this->normalizeSearchSegment($district['name'] ?? null),
+            $this->normalizeSearchSegment($city['name'] ?? null),
+            $this->normalizeSearchSegment($province['name'] ?? null),
+            $village['postal_code'] ?? null,
+        ]);
+
+        return implode(' ', $parts);
+    }
+
+    protected function normalizeSearchSegment(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
         }
 
-        fclose($handle);
+        $normalized = preg_replace('/[^\pL\pN\s]+/u', ' ', mb_strtoupper($value));
+        $normalized = preg_replace('/\s+/u', ' ', trim((string) $normalized));
 
-        if ($statement !== '') {
-            DB::unprepared($statement);
-            $executed++;
-        }
-
-        $this->command->info("Executed {$executed} SQL statement(s).");
+        return $normalized !== '' ? $normalized : null;
     }
 }
