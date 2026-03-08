@@ -2,7 +2,6 @@
 
 namespace Aliziodev\IndonesiaRegions\Commands;
 
-use Aliziodev\IndonesiaRegions\Database\Seeders\IndonesiaRegionSeeder;
 use Illuminate\Console\Command;
 
 class InstallCommand extends Command
@@ -21,8 +20,7 @@ class InstallCommand extends Command
 
         $this->call('migrate');
 
-        $this->call('db:seed', [
-            '--class' => IndonesiaRegionSeeder::class,
+        $this->call('indonesia-regions:sync', [
             '--force' => true,
         ]);
 
