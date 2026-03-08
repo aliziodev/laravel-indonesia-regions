@@ -35,7 +35,6 @@ jobs:
         run: |
           UPSTREAM_HASH=$(curl -sf \
             -H "Accept: application/vnd.github.v3+json" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/aliziodev/laravel-wilayah/commits/main" \
             | php -r '$data = json_decode(stream_get_contents(STDIN), true); echo $data["sha"] ?? "null";')
 
@@ -68,13 +67,10 @@ jobs:
           cp data/version.php /tmp/regions-version-before.php 2>/dev/null || true
           echo "release_date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
 
-      - name: Generate SQL from laravel-wilayah
+      - name: Sync PHP dataset from laravel-wilayah
         if: steps.check.outputs.changed == 'true'
-        env:
-          UPSTREAM_HASH: ${{ steps.check.outputs.upstream_hash }}
         run: |
-          git clone --depth=1 https://github.com/aliziodev/laravel-wilayah /tmp/laravel-wilayah
-          php .github/scripts/generate_sql.php /tmp/laravel-wilayah src/Database/Sql/indonesia_regions.sql data/version.php
+          php .github/scripts/sync_upstream_data.php https://github.com/aliziodev/laravel-wilayah.git main data
 
       - name: Bump version
         if: steps.check.outputs.changed == 'true'
@@ -108,7 +104,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md data/version.php src/Database/Sql/indonesia_regions.sql
+          git add CHANGELOG.md data
           git commit -m "data: sync indonesia regions $(date +%Y-%m-%d) [skip ci]
 
           Source: aliziodev/laravel-wilayah@${{ steps.check.outputs.upstream_hash }}"
