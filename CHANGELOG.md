@@ -4,6 +4,14 @@
 
 ---
 
+## [1.0.14] — 2026-03-30
+
+### Code Changes
+- feat: add automated release workflow for code changes and update PHP version support (488c74a)
+- feat: implement RegionHelperTrait, add search text migration, and configure testing infrastructure (edc23b7)
+- chore: update illuminate dependencies to support version 13.0 (d9f6cb5)
+---
+
 ## [1.0.13] — 2026-03-08
 
 ### Data Sync
@@ -42,8 +50,9 @@
 
 ### Statistik
 - Total rows: 91162 -> 91162 (0)
-[Unreleased]: https://github.com/aliziodev/laravel-indonesia-regions/compare/v1.0.13...HEAD
+[Unreleased]: https://github.com/aliziodev/laravel-indonesia-regions/compare/v1.0.14...HEAD
 [1.0.10]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.10
 [1.0.11]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.11
 [1.0.12]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.12
 [1.0.13]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.13
+[1.0.14]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.14
