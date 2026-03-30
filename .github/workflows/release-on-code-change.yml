@@ -1,0 +1,135 @@
+name: Release on Code Change
+
+on:
+  workflow_run:
+    workflows: ["Tests"]
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    # Hanya jalankan jika tests berhasil dan bukan dari commit data sync / release bot
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        !contains(github.event.workflow_run.head_commit.message, '[skip ci]')
+      )
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Cek apakah ada perubahan kode sejak tag terakhir
+        id: check
+        run: |
+          LAST_TAG=$(git tag --list 'v*' --sort=-version:refname | head -n 1)
+
+          if [ -z "$LAST_TAG" ]; then
+            echo "Tidak ada tag sebelumnya, anggap ada perubahan."
+            echo "has_code_changes=true" >> $GITHUB_OUTPUT
+            echo "last_tag=none" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "last_tag=$LAST_TAG" >> $GITHUB_OUTPUT
+
+          # Cek perubahan file kode (bukan file data/ dan CHANGELOG.md dan release-notes)
+          CHANGED=$(git diff --name-only "${LAST_TAG}...HEAD" -- \
+            ':!data/' \
+            ':!CHANGELOG.md' \
+            ':!.github/release-notes.md' \
+          )
+
+          if [ -n "$CHANGED" ]; then
+            echo "✅ Ada perubahan kode sejak $LAST_TAG:"
+            echo "$CHANGED"
+            echo "has_code_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "⏭️ Tidak ada perubahan kode sejak $LAST_TAG, skip release."
+            echo "has_code_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Bump versi
+        if: steps.check.outputs.has_code_changes == 'true'
+        id: version
+        run: |
+          CURRENT_TAG=$(git tag --list 'v*' --sort=-version:refname | head -n 1)
+          CURRENT="${CURRENT_TAG#v}"
+
+          if [ -z "$CURRENT" ] || [ "$CURRENT" = "$CURRENT_TAG" ]; then
+            CURRENT="1.0.9"
+          fi
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          echo "current_version=$CURRENT" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Kumpulkan daftar commit perubahan kode
+        if: steps.check.outputs.has_code_changes == 'true'
+        id: commits
+        run: |
+          LAST_TAG="${{ steps.check.outputs.last_tag }}"
+
+          if [ "$LAST_TAG" = "none" ]; then
+            LOG_RANGE="HEAD"
+          else
+            LOG_RANGE="${LAST_TAG}...HEAD"
+          fi
+
+          # Ambil commit log, kecuali commit data sync dan release bot
+          COMMITS=$(git log "$LOG_RANGE" \
+            --pretty=format:"- %s (%h)" \
+            --no-merges \
+            | grep -v '\[skip ci\]' \
+            | grep -v '^- data:' \
+            | grep -v '^- chore: release' \
+            || true)
+
+          # Simpan ke file sementara untuk diteruskan ke PHP
+          echo "$COMMITS" > /tmp/code-commits.txt
+          cat /tmp/code-commits.txt
+
+      - name: Generate changelog dan release notes
+        if: steps.check.outputs.has_code_changes == 'true'
+        run: |
+          COMMITS=$(cat /tmp/code-commits.txt)
+          php .github/scripts/generate_code_changelog.php \
+            "${{ steps.check.outputs.last_tag }}" \
+            "${{ steps.version.outputs.new_version }}" \
+            CHANGELOG.md \
+            .github/release-notes.md \
+            "$COMMITS"
+
+      - name: Commit dan push CHANGELOG
+        if: steps.check.outputs.has_code_changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git diff --cached --quiet || git commit -m "chore: release v${{ steps.version.outputs.new_version }} [skip ci]"
+          git push
+
+      - name: Buat GitHub release
+        if: steps.check.outputs.has_code_changes == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.new_version }}
+          name: "v${{ steps.version.outputs.new_version }} - Code Update"
+          body_path: .github/release-notes.md
+          generate_release_notes: false
