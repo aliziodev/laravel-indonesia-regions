@@ -41,7 +41,7 @@ return new class extends Migration
         if ($driver === 'mysql') {
             try {
                 DB::statement('ALTER TABLE indonesia_regions DROP INDEX idx_region_search_text');
-            } catch (\Throwable) {
+            } catch (Throwable) {
             }
         }
 

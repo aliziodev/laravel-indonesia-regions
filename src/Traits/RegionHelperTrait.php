@@ -5,6 +5,7 @@ namespace Aliziodev\IndonesiaRegions\Traits;
 use Aliziodev\IndonesiaRegions\Models\IndonesiaRegion;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -235,7 +236,7 @@ trait RegionHelperTrait
         return self::ALLOWED_COUNTRIES[$countryName];
     }
 
-    protected function buildRegionQuery(?string $parentCode): \Illuminate\Database\Eloquent\Builder
+    protected function buildRegionQuery(?string $parentCode): Builder
     {
         $query = IndonesiaRegion::query();
         $lengthFunc = $this->getLengthFunction();
@@ -267,7 +268,7 @@ trait RegionHelperTrait
         return $query->orderBy('name');
     }
 
-    protected function applyIndexHint(\Illuminate\Database\Eloquent\Builder $query, string $indexType): \Illuminate\Database\Eloquent\Builder
+    protected function applyIndexHint(Builder $query, string $indexType): Builder
     {
         if ($this->getRegionDatabaseDriver() === 'mysql') {
             $query->from(DB::raw('indonesia_regions FORCE INDEX ('.$this->getDbIndex($indexType).')'));
@@ -302,7 +303,7 @@ trait RegionHelperTrait
         return $this->getDatabaseFunction('substring');
     }
 
-    protected function applyCaseInsensitiveLike(\Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder $query, string $column, string $term, string $boolean = 'and'): void
+    protected function applyCaseInsensitiveLike(Builder|\Illuminate\Database\Query\Builder $query, string $column, string $term, string $boolean = 'and'): void
     {
         $pattern = '%'.$term.'%';
 
@@ -359,7 +360,7 @@ trait RegionHelperTrait
         }
     }
 
-    protected function optimizeQuery(\Illuminate\Database\Eloquent\Builder $query, ?array $columns = null): \Illuminate\Database\Eloquent\Builder
+    protected function optimizeQuery(Builder $query, ?array $columns = null): Builder
     {
         return $query->select($this->resolveColumns($columns))
             ->limit(self::QUERY_CONFIG['max_results']);

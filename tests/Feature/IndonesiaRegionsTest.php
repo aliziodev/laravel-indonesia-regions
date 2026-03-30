@@ -5,6 +5,7 @@ use Aliziodev\IndonesiaRegions\Commands\SyncCommand;
 use Aliziodev\IndonesiaRegions\Database\Seeders\IndonesiaRegionSeeder;
 use Aliziodev\IndonesiaRegions\Facades\Indonesia;
 use Illuminate\Console\OutputStyle;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -105,7 +106,7 @@ test('search postal code numeric mengembalikan village', function () {
 test('search dengan pagination mengembalikan paginator', function () {
     $results = Indonesia::search('Bakongan', perPage: 1);
 
-    expect($results)->toBeInstanceOf(\Illuminate\Pagination\LengthAwarePaginator::class)
+    expect($results)->toBeInstanceOf(LengthAwarePaginator::class)
         ->and($results->total())->toBe(2)
         ->and(count($results->items()))->toBe(1);
 });
@@ -161,7 +162,7 @@ test('get full address menerima country name ID', function () {
 
 test('full address melempar exception untuk country name yang tidak didukung', function () {
     expect(fn () => Indonesia::getFullAddress('11.01.01.2001', 'Republic of Indonesia'))
-        ->toThrow(\InvalidArgumentException::class, 'Invalid country name');
+        ->toThrow(InvalidArgumentException::class, 'Invalid country name');
 });
 
 test('get region type dan validate code bekerja sesuai struktur kode', function () {
@@ -175,7 +176,7 @@ test('get region type dan validate code bekerja sesuai struktur kode', function 
 
 test('get region info melempar exception untuk kode yang tidak valid', function () {
     expect(fn () => Indonesia::getRegionInfo('11.0'))
-        ->toThrow(\InvalidArgumentException::class, 'Invalid region code length');
+        ->toThrow(InvalidArgumentException::class, 'Invalid region code length');
 });
 
 test('clear cache command berhasil dijalankan', function () {
@@ -309,7 +310,7 @@ test('api select context mengembalikan selected options bertingkat', function ()
 });
 
 test('install command memanggil publish migrate dan seed', function () {
-    $command = \Mockery::mock(InstallCommand::class)->makePartial();
+    $command = Mockery::mock(InstallCommand::class)->makePartial();
     $command->shouldReceive('call')
         ->once()
         ->with('vendor:publish', ['--tag' => 'indonesia-regions-migrations'])
@@ -330,7 +331,7 @@ test('install command memanggil publish migrate dan seed', function () {
 });
 
 test('sync command memanggil seeder package', function () {
-    $command = \Mockery::mock(SyncCommand::class)->makePartial()->shouldAllowMockingProtectedMethods();
+    $command = Mockery::mock(SyncCommand::class)->makePartial()->shouldAllowMockingProtectedMethods();
     $command->shouldReceive('option')
         ->once()
         ->with('force')
@@ -350,7 +351,7 @@ test('sync command memanggil seeder package', function () {
 });
 
 test('sync command membersihkan cache setelah seeder berhasil', function () {
-    $command = \Mockery::mock(SyncCommand::class)->makePartial()->shouldAllowMockingProtectedMethods();
+    $command = Mockery::mock(SyncCommand::class)->makePartial()->shouldAllowMockingProtectedMethods();
     $command->shouldReceive('option')
         ->once()
         ->with('force')
@@ -375,7 +376,7 @@ test('sync command membersihkan cache setelah seeder berhasil', function () {
 });
 
 test('sync command gagal jika clear cache gagal', function () {
-    $command = \Mockery::mock(SyncCommand::class)->makePartial()->shouldAllowMockingProtectedMethods();
+    $command = Mockery::mock(SyncCommand::class)->makePartial()->shouldAllowMockingProtectedMethods();
     $command->shouldReceive('option')
         ->once()
         ->with('force')

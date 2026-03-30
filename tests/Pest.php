@@ -1,3 +1,5 @@
 <?php
 
-uses(\Aliziodev\IndonesiaRegions\Tests\TestCase::class)->in('Feature');
+use Aliziodev\IndonesiaRegions\Tests\TestCase;
+
+uses(TestCase::class)->in('Feature');
