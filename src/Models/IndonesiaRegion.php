@@ -26,6 +26,21 @@ class IndonesiaRegion extends Model
 
     public function getConnectionName()
     {
-        return config('indonesia-regions.database.connection') ?: parent::getConnectionName();
+        $connectionName = config('indonesia-regions.database.connection');
+
+        // Jika tidak ada konfigurasi koneksi, gunakan koneksi default aplikasi
+        if (empty($connectionName)) {
+            return null;
+        }
+
+        // Validasi koneksi agar sesuai format Illuminate DatabaseManager
+        $connections = config('database.connections');
+        if (! is_array($connections) || ! isset($connections[$connectionName])) {
+            throw new \RuntimeException(
+                "Koneksi database '{$connectionName}' tidak ditemukan dalam konfigurasi database."
+            );
+        }
+
+        return $connectionName;
     }
 }
