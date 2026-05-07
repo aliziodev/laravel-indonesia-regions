@@ -4,6 +4,12 @@
 
 ---
 
+## [1.0.18] — 2026-05-07
+
+### Code Changes
+- docs: add docs configuration file, and Pint preset (2481c5b)
+---
+
 ## [1.0.17] — 2026-05-07
 
 ### Data Sync
@@ -76,7 +82,7 @@
 
 ### Statistik
 - Total rows: 91162 -> 91162 (0)
-[Unreleased]: https://github.com/aliziodev/laravel-indonesia-regions/compare/v1.0.17...HEAD
+[Unreleased]: https://github.com/aliziodev/laravel-indonesia-regions/compare/v1.0.18...HEAD
 [1.0.10]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.10
 [1.0.11]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.11
 [1.0.12]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.12
@@ -85,3 +91,4 @@
 [1.0.15]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.15
 [1.0.16]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.16
 [1.0.17]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.17
+[1.0.18]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.18
