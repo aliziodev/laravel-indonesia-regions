@@ -4,6 +4,12 @@
 
 ---
 
+## [1.0.23] — 2026-05-15
+
+### Code Changes
+- test: add feature tests for Indonesia regions service including caching and search functionality (12f0e60)
+---
+
 ## [1.0.22] — 2026-05-15
 
 ### Code Changes
@@ -118,7 +124,7 @@
 
 ### Statistik
 - Total rows: 91162 -> 91162 (0)
-[Unreleased]: https://github.com/aliziodev/laravel-indonesia-regions/compare/v1.0.22...HEAD
+[Unreleased]: https://github.com/aliziodev/laravel-indonesia-regions/compare/v1.0.23...HEAD
 [1.0.10]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.10
 [1.0.11]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.11
 [1.0.12]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.12
@@ -132,3 +138,4 @@
 [1.0.20]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.20
 [1.0.21]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.21
 [1.0.22]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.22
+[1.0.23]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.23
