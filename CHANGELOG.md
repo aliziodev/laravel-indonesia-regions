@@ -4,6 +4,12 @@
 
 ---
 
+## [1.0.22] — 2026-05-15
+
+### Code Changes
+- fix: cegah deserialisasi __PHP_Incomplete_Class dari cache pada hasil Eloquent (d96c529)
+---
+
 ## [1.0.21] — 2026-05-15
 
 ### Data Sync
@@ -112,7 +118,7 @@
 
 ### Statistik
 - Total rows: 91162 -> 91162 (0)
-[Unreleased]: https://github.com/aliziodev/laravel-indonesia-regions/compare/v1.0.21...HEAD
+[Unreleased]: https://github.com/aliziodev/laravel-indonesia-regions/compare/v1.0.22...HEAD
 [1.0.10]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.10
 [1.0.11]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.11
 [1.0.12]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.12
@@ -125,3 +131,4 @@
 [1.0.19]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.19
 [1.0.20]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.20
 [1.0.21]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.21
+[1.0.22]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.22
