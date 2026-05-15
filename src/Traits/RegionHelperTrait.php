@@ -281,9 +281,11 @@ trait RegionHelperTrait
     {
         $cacheKey = $this->getCacheKey('regions', $parentCode ?? 'root', $columns);
 
-        return $this->rememberCache($cacheKey, function () use ($parentCode, $columns) {
-            return $this->buildRegionQuery($parentCode)->get($columns);
+        $data = $this->rememberCache($cacheKey, function () use ($parentCode, $columns) {
+            return $this->buildRegionQuery($parentCode)->get($columns)->toArray();
         });
+
+        return collect($data)->map(fn (array $item) => (new IndonesiaRegion)->fill($item));
     }
 
     protected function getDatabaseFunction(string $type): string

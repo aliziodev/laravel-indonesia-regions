@@ -93,9 +93,17 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
         $columns = $this->resolveColumns($columns);
         $cacheKey = $this->getCacheKey('region', $code, $columns);
 
-        return $this->rememberCache($cacheKey, function () use ($code, $columns) {
-            return IndonesiaRegion::select($columns)->find($code);
+        $data = $this->rememberCache($cacheKey, function () use ($code, $columns) {
+            $region = IndonesiaRegion::select($columns)->find($code);
+
+            return $region ? $region->toArray() : null;
         });
+
+        if ($data === null) {
+            return null;
+        }
+
+        return (new IndonesiaRegion)->fill($data);
     }
 
     /**
@@ -135,9 +143,11 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
             ]);
 
             try {
-                return $this->rememberCache($cacheKey, function () use ($term, $type, $columns) {
-                    return $this->performSearch($term, $type, null, $columns);
+                $data = $this->rememberCache($cacheKey, function () use ($term, $type, $columns) {
+                    return $this->performSearch($term, $type, null, $columns)->toArray();
                 });
+
+                return collect($data)->map(fn (array $item) => (new IndonesiaRegion)->fill($item));
             } catch (\Exception $e) {
                 report('[Indonesia Region] Cached search failed: '.$e->getMessage());
 
@@ -350,13 +360,21 @@ class IndonesiaRegionService implements IndonesiaRegionInterface
     {
         $cacheKey = $this->getCacheKey('postal_code', $postalCode);
 
-        return $this->rememberCache($cacheKey, function () use ($postalCode) {
-            return IndonesiaRegion::query()
+        $data = $this->rememberCache($cacheKey, function () use ($postalCode) {
+            $region = IndonesiaRegion::query()
                 ->select($this->resolveColumns(null))
                 ->where('postal_code', $postalCode)
                 ->whereRaw("{$this->getLengthFunction()}(code) = ?", [self::REGION_TYPES['village']])
                 ->first();
+
+            return $region ? $region->toArray() : null;
         });
+
+        if ($data === null) {
+            return null;
+        }
+
+        return (new IndonesiaRegion)->fill($data);
     }
 
     /**

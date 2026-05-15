@@ -4,6 +4,7 @@ use Aliziodev\IndonesiaRegions\Commands\InstallCommand;
 use Aliziodev\IndonesiaRegions\Commands\SyncCommand;
 use Aliziodev\IndonesiaRegions\Database\Seeders\IndonesiaRegionSeeder;
 use Aliziodev\IndonesiaRegions\Facades\Indonesia;
+use Aliziodev\IndonesiaRegions\Models\IndonesiaRegion;
 use Illuminate\Console\OutputStyle;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
@@ -25,12 +26,30 @@ test('get regions berjalan di sqlite untuk root provinces', function () {
         ->and(isset($regions->first()->postal_code))->toBeFalse();
 });
 
+test('get regions tetap mengembalikan Collection IndonesiaRegion yang valid dari cache pada pemanggilan kedua', function () {
+    $first = Indonesia::getRegions();
+    $second = Indonesia::getRegions();
+
+    expect($second)->toHaveCount(1)
+        ->and($second->first())->toBeInstanceOf(IndonesiaRegion::class)
+        ->and($second->first()->code)->toBe('11')
+        ->and($second->first()->name)->toBe('ACEH');
+});
+
 test('get regions untuk villages menyertakan postal code default', function () {
     $regions = Indonesia::getRegions('11.01.01');
 
     expect($regions)->toHaveCount(1)
         ->and($regions->first()->code)->toBe('11.01.01.2001')
         ->and($regions->first()->postal_code)->toBe('23773');
+});
+
+test('get regions villages dari cache tetap menyertakan postal code', function () {
+    $first = Indonesia::getRegions('11.01.01');
+    $second = Indonesia::getRegions('11.01.01');
+
+    expect($second->first())->toBeInstanceOf(IndonesiaRegion::class)
+        ->and($second->first()->postal_code)->toBe('23773');
 });
 
 test('get region info mengembalikan hierarchy dan full address', function () {
@@ -61,11 +80,70 @@ test('find by code mengembalikan region yang benar', function () {
         ->and($region->postal_code)->toBe('23773');
 });
 
+test('find by code mengembalikan instance IndonesiaRegion yang valid pada pemanggilan pertama', function () {
+    $region = Indonesia::findByCode('11.01.01.2001');
+
+    expect($region)->toBeInstanceOf(IndonesiaRegion::class)
+        ->and($region->code)->toBe('11.01.01.2001')
+        ->and($region->name)->toBe('KEUDE BAKONGAN')
+        ->and($region->postal_code)->toBe('23773');
+});
+
+test('find by code tetap mengembalikan IndonesiaRegion yang valid dari cache pada pemanggilan kedua', function () {
+    // Pemanggilan pertama: hasil dari database, disimpan ke cache sebagai array
+    $first = Indonesia::findByCode('11.01.01.2001');
+
+    // Pemanggilan kedua: hasil dari cache — ini yang dulu menyebabkan __PHP_Incomplete_Class
+    $second = Indonesia::findByCode('11.01.01.2001');
+
+    expect($second)->toBeInstanceOf(IndonesiaRegion::class)
+        ->and($second->code)->toBe('11.01.01.2001')
+        ->and($second->name)->toBe('KEUDE BAKONGAN')
+        ->and($second->postal_code)->toBe('23773');
+});
+
+test('find by code dari cache menghasilkan nilai yang identik dengan hasil database', function () {
+    $fromDb = Indonesia::findByCode('11.01.01.2001');
+    $fromCache = Indonesia::findByCode('11.01.01.2001');
+
+    expect($fromCache->code)->toBe($fromDb->code)
+        ->and($fromCache->name)->toBe($fromDb->name)
+        ->and($fromCache->postal_code)->toBe($fromDb->postal_code);
+});
+
+test('find by code mengembalikan null jika kode tidak ditemukan', function () {
+    expect(Indonesia::findByCode('99.99.99.9999'))->toBeNull();
+});
+
+test('find by code null dari cache tetap null pada pemanggilan berikutnya', function () {
+    $first = Indonesia::findByCode('99.99.99.9999');
+    $second = Indonesia::findByCode('99.99.99.9999');
+
+    expect($first)->toBeNull()
+        ->and($second)->toBeNull();
+});
+
 test('find by postal code mengembalikan village yang benar', function () {
     $region = Indonesia::findByPostalCode('23773');
 
     expect($region)->not->toBeNull()
         ->and($region->code)->toBe('11.01.01.2001');
+});
+
+test('find by postal code tetap mengembalikan IndonesiaRegion yang valid dari cache pada pemanggilan kedua', function () {
+    // Pemanggilan pertama: hasil dari database
+    $first = Indonesia::findByPostalCode('23773');
+
+    // Pemanggilan kedua: hasil dari cache — regresi test
+    $second = Indonesia::findByPostalCode('23773');
+
+    expect($second)->toBeInstanceOf(IndonesiaRegion::class)
+        ->and($second->code)->toBe('11.01.01.2001')
+        ->and($second->postal_code)->toBe('23773');
+});
+
+test('find by postal code mengembalikan null jika tidak ditemukan', function () {
+    expect(Indonesia::findByPostalCode('00000'))->toBeNull();
 });
 
 test('search mengembalikan district dan village yang cocok', function () {
@@ -76,6 +154,16 @@ test('search mengembalikan district dan village yang cocok', function () {
             '11.01.01',
             '11.01.01.2001',
         ]);
+});
+
+test('search tetap mengembalikan Collection IndonesiaRegion yang valid dari cache pada pemanggilan kedua', function () {
+    $first = Indonesia::search('Bakongan');
+    $second = Indonesia::search('Bakongan');
+
+    expect($second)->toHaveCount(2)
+        ->and($second->first())->toBeInstanceOf(IndonesiaRegion::class)
+        ->and($second->first()->code)->toBe('11.01.01')
+        ->and($second->last()->code)->toBe('11.01.01.2001');
 });
 
 test('search bersifat case insensitive', function () {
