@@ -208,7 +208,10 @@ trait RegionHelperTrait
 
     protected function buildFullAddress(array|object $data, ?string $countryName = self::DEFAULT_COUNTRY, bool $isRaw = false): string
     {
-        $countryName = $this->normalizeCountryName($countryName);
+        $countryName = config('indonesia-regions.address.show_country', true)
+            ? $this->normalizeCountryName($countryName)
+            : null;
+
         $parts = $this->buildAddressParts($data, $isRaw);
 
         $addressParts = array_filter([

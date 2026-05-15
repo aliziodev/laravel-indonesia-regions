@@ -616,3 +616,14 @@ test('upgrade migration menghapus kolom latitude dan longitude pada schema lama'
     expect(Schema::hasColumn('indonesia_regions', 'latitude'))->toBeFalse()
         ->and(Schema::hasColumn('indonesia_regions', 'longitude'))->toBeFalse();
 });
+
+test('get full address menyembunyikan nama negara ketika show_country diset ke false', function () {
+    config()->set('indonesia-regions.address.show_country', false);
+
+    $address = Indonesia::getFullAddress('11.01.01.2001');
+
+    expect($address)->toContain('Keude Bakongan')
+        ->and($address)->toContain('Bakongan')
+        ->and($address)->toContain('23773')
+        ->and($address)->not->toContain('Indonesia');
+});

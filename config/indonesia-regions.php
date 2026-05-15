@@ -151,4 +151,24 @@ return [
          */
         'prefix' => env('INDONESIA_REGIONS_CACHE_PREFIX', 'indonesia_regions'),
     ],
+
+    /**
+     * Pengaturan format alamat.
+     *
+     * @var array{
+     *     show_country: bool,
+     * }
+     */
+    'address' => [
+
+        /**
+         * Tampilkan nama negara pada format alamat lengkap.
+         *
+         * Jika diset ke false, nama negara (seperti "Indonesia") tidak akan
+         * disertakan dalam string alamat yang dihasilkan.
+         *
+         * @var bool
+         */
+        'show_country' => env('INDONESIA_REGIONS_SHOW_COUNTRY', true),
+    ],
 ];
