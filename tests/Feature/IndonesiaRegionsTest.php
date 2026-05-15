@@ -123,6 +123,63 @@ test('find by code null dari cache tetap null pada pemanggilan berikutnya', func
         ->and($second)->toBeNull();
 });
 
+// -----------------------------------------------------------------------
+// Test serialisasi — memverifikasi keamanan di file/redis cache driver
+// Array driver tidak pernah serialize, sehingga test di atas tidak cukup
+// untuk mendeteksi bug __PHP_Incomplete_Class di production.
+// -----------------------------------------------------------------------
+
+test('find by code menyimpan array ke cache, bukan objek Eloquent', function () {
+    Indonesia::findByCode('11.01.01.2001');
+
+    $prefix = config('indonesia-regions.cache.prefix', 'indonesia_regions');
+    $keys = Cache::store('array')->get($prefix.'.__keys__', []);
+    $regionKey = collect($keys)->first(fn ($k) => str_contains($k, 'region.11.01.01.2001'));
+
+    $cached = Cache::store('array')->get($regionKey);
+
+    // Nilai di cache HARUS berupa array — bukan objek Eloquent
+    expect($cached)->toBeArray()
+        ->and($cached['code'])->toBe('11.01.01.2001');
+});
+
+test('find by code data cache survive siklus serialize/unserialize seperti file cache driver', function () {
+    Indonesia::findByCode('11.01.01.2001');
+
+    $prefix = config('indonesia-regions.cache.prefix', 'indonesia_regions');
+    $keys = Cache::store('array')->get($prefix.'.__keys__', []);
+    $regionKey = collect($keys)->first(fn ($k) => str_contains($k, 'region.11.01.01.2001'));
+
+    $cached = Cache::store('array')->get($regionKey);
+
+    // Simulasi serialize/unserialize seperti file atau redis cache driver
+    $afterSerialize = unserialize(serialize($cached));
+
+    // Setelah roundtrip serialisasi, harus tetap array yang valid
+    // (bukan __PHP_Incomplete_Class)
+    expect($afterSerialize)->toBeArray()
+        ->and($afterSerialize['code'])->toBe('11.01.01.2001')
+        ->and($afterSerialize['name'])->toBe('KEUDE BAKONGAN');
+
+    // Dan harus bisa direkonstruksi kembali menjadi IndonesiaRegion
+    $region = (new IndonesiaRegion)->fill($afterSerialize);
+    expect($region)->toBeInstanceOf(IndonesiaRegion::class)
+        ->and($region->code)->toBe('11.01.01.2001');
+});
+
+test('find by code null tersimpan sebagai null yang dapat di-serialize', function () {
+    Indonesia::findByCode('99.99.99.9999');
+
+    $prefix = config('indonesia-regions.cache.prefix', 'indonesia_regions');
+    $keys = Cache::store('array')->get($prefix.'.__keys__', []);
+    $regionKey = collect($keys)->first(fn ($k) => str_contains($k, 'region.99.99.99.9999'));
+
+    $cached = Cache::store('array')->get($regionKey);
+
+    // null harus survive siklus serialize/unserialize
+    expect(unserialize(serialize($cached)))->toBeNull();
+});
+
 test('find by postal code mengembalikan village yang benar', function () {
     $region = Indonesia::findByPostalCode('23773');
 
