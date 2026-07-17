@@ -4,6 +4,16 @@
 
 ---
 
+## [1.0.54] — 2026-07-17
+
+### Data Sync
+- Package version: `1.0.53` -> `1.0.54`
+- Source `aliziodev/laravel-wilayah`: `ae5284fb3423` -> `414eb34cdfcf`
+
+### Statistik
+- Total rows: 91162 -> 91162 (0)
+---
+
 ## [1.0.53] — 2026-07-16
 
 ### Data Sync
@@ -420,7 +430,7 @@
 
 ### Statistik
 - Total rows: 91162 -> 91162 (0)
-[Unreleased]: https://github.com/aliziodev/laravel-indonesia-regions/compare/v1.0.53...HEAD
+[Unreleased]: https://github.com/aliziodev/laravel-indonesia-regions/compare/v1.0.54...HEAD
 [1.0.10]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.10
 [1.0.11]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.11
 [1.0.12]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.12
@@ -465,3 +475,4 @@
 [1.0.51]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.51
 [1.0.52]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.52
 [1.0.53]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.53
+[1.0.54]: https://github.com/aliziodev/laravel-indonesia-regions/releases/tag/v1.0.54
