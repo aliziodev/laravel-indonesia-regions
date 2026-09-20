@@ -66,6 +66,7 @@ return [
     ['code' => '71.04.07', 'name' => 'Melonguane'],
     ['code' => '71.04.08', 'name' => 'Gemeh'],
     ['code' => '71.04.09', 'name' => 'Damau'],
+    ['code' => '71.04.10', 'name' => 'Tampan\' Amma'],
     ['code' => '71.04.11', 'name' => 'Salibabu'],
     ['code' => '71.04.12', 'name' => 'Kalongan'],
     ['code' => '71.04.13', 'name' => 'Miangas'],

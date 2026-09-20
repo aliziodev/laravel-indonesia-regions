@@ -71,6 +71,7 @@ return [
     ['code' => '52.04.29', 'name' => 'Lantung'],
     ['code' => '52.05.01', 'name' => 'Dompu'],
     ['code' => '52.05.02', 'name' => 'Kempo'],
+    ['code' => '52.05.03', 'name' => 'Hu\'u'],
     ['code' => '52.05.04', 'name' => 'Kilo'],
     ['code' => '52.05.05', 'name' => 'Woja'],
     ['code' => '52.05.06', 'name' => 'Pekat'],

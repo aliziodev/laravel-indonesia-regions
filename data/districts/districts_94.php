@@ -100,6 +100,7 @@ return [
     ['code' => '94.05.13', 'name' => 'Kembru'],
     ['code' => '94.05.14', 'name' => 'Bina'],
     ['code' => '94.05.15', 'name' => 'Sinak Barat'],
+    ['code' => '94.05.16', 'name' => 'Mage\'abume'],
     ['code' => '94.05.17', 'name' => 'Yugumuak'],
     ['code' => '94.05.18', 'name' => 'Ilaga Utara'],
     ['code' => '94.05.19', 'name' => 'Mabugi'],

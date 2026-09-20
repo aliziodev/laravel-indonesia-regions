@@ -395,6 +395,7 @@ return [
     ['code' => '14.02.10.2007', 'name' => 'Rawa Asri', 'type' => 0, 'postal_code' => '29335'],
     ['code' => '14.02.10.2008', 'name' => 'Suka Jadi', 'type' => 0, 'postal_code' => '29335'],
     ['code' => '14.02.10.2009', 'name' => 'Teluk Sungkai', 'type' => 0, 'postal_code' => '29335'],
+    ['code' => '14.02.10.2010', 'name' => 'Pulau Jum\'at', 'type' => 0, 'postal_code' => '29335'],
     ['code' => '14.02.11.2001', 'name' => 'Morong', 'type' => 0, 'postal_code' => '29363'],
     ['code' => '14.02.11.2002', 'name' => 'Pasir Bongkal', 'type' => 0, 'postal_code' => '29363'],
     ['code' => '14.02.11.2003', 'name' => 'Pasir Selabau', 'type' => 0, 'postal_code' => '29363'],

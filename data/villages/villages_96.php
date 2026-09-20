@@ -949,6 +949,8 @@ return [
     ['code' => '96.05.22.2006', 'name' => 'Sabun', 'type' => 0, 'postal_code' => '98056'],
     ['code' => '96.05.22.2007', 'name' => 'Itigah', 'type' => 0, 'postal_code' => '98056'],
     ['code' => '96.05.22.2008', 'name' => 'Sira Tee', 'type' => 0, 'postal_code' => '98056'],
+    ['code' => '96.05.22.2009', 'name' => 'Wrait \'U\'', 'type' => 0, 'postal_code' => '98056'],
+    ['code' => '96.05.22.2010', 'name' => 'Way \'U\'', 'type' => 0, 'postal_code' => '98056'],
     ['code' => '96.05.22.2011', 'name' => 'Asnaif', 'type' => 0, 'postal_code' => '98056'],
     ['code' => '96.05.22.2012', 'name' => 'Iroh Sohser', 'type' => 0, 'postal_code' => '98056'],
     ['code' => '96.05.22.2013', 'name' => 'Framboh', 'type' => 0, 'postal_code' => '98056'],

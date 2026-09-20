@@ -1247,6 +1247,7 @@ return [
     ['code' => '15.08.08.2006', 'name' => 'Tebing Tinggi', 'type' => 0, 'postal_code' => '37216'],
     ['code' => '15.08.08.2007', 'name' => 'Datar', 'type' => 0, 'postal_code' => '37216'],
     ['code' => '15.08.08.2008', 'name' => 'Suka Jaya', 'type' => 0, 'postal_code' => '37216'],
+    ['code' => '15.08.08.2009', 'name' => 'Pekan Jum\'at', 'type' => 0, 'postal_code' => '37216'],
     ['code' => '15.08.09.2001', 'name' => 'Koto Jayo', 'type' => 0, 'postal_code' => '37252'],
     ['code' => '15.08.09.2002', 'name' => 'Danau', 'type' => 0, 'postal_code' => '37252'],
     ['code' => '15.08.09.2003', 'name' => 'Muara Kuamang', 'type' => 0, 'postal_code' => '37252'],

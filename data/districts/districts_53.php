@@ -35,6 +35,7 @@ return [
     ['code' => '53.02.07', 'name' => 'Amanuban Barat'],
     ['code' => '53.02.08', 'name' => 'Amanatun Selatan'],
     ['code' => '53.02.09', 'name' => 'Amanatun Utara'],
+    ['code' => '53.02.10', 'name' => 'KI\'E'],
     ['code' => '53.02.11', 'name' => 'Kuanfatu'],
     ['code' => '53.02.12', 'name' => 'Fatumnasi'],
     ['code' => '53.02.13', 'name' => 'Polen'],

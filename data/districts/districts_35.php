@@ -602,6 +602,7 @@ return [
     ['code' => '35.29.19', 'name' => 'Gapura'],
     ['code' => '35.29.20', 'name' => 'Gayam'],
     ['code' => '35.29.21', 'name' => 'Nonggunong'],
+    ['code' => '35.29.22', 'name' => 'Ra\'as'],
     ['code' => '35.29.23', 'name' => 'Masalembu'],
     ['code' => '35.29.24', 'name' => 'Arjasa'],
     ['code' => '35.29.25', 'name' => 'Sapeken'],
