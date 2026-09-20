@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Rilis harus dipotong dari commit yang benar-benar lulus Tests,
           # bukan dari tip main yang mungkin sudah bergerak.
@@ -142,7 +142,7 @@ jobs:
 
       - name: Buat GitHub release
         if: steps.check.outputs.has_code_changes == 'true'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.new_version }}
           name: "v${{ steps.version.outputs.new_version }} - Code Update"
