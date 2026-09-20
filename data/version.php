@@ -5,7 +5,7 @@ return [
     'version' => '2026.09.15',
     'data_date' => '2026-09-15',
     'source_hash' => '7a1e4001110af82aec56b5618e5588a18cb98596',
-    'generated_at' => '2026-09-15T08:59:02+00:00',
+    'data_hash' => '9c8454906080964064f3645fff613af3f17b3682d9e7f2d062917be2de18c2c4',
     'source' => [
         'repo' => 'aliziodev/laravel-wilayah',
         'branch' => 'main',

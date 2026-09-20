@@ -16,8 +16,9 @@ cloneUpstreamRepository($repository, $branch, $temporaryClonePath);
 try {
     $rows = copyWilayahData($temporaryClonePath, $targetDataPath);
     $upstreamHash = resolveGitHash($temporaryClonePath);
+    $dataHash = calculateDataHash($targetDataPath);
 
-    writeManifest($targetDataPath.'/version.php', $rows, $upstreamHash, $branch);
+    writeManifest($targetDataPath.'/version.php', $rows, $upstreamHash, $branch, $dataHash);
 
     echo "Copied {$rows} rows from {$repository} ({$branch}@{$upstreamHash}) into {$targetDataPath}\n";
 } finally {
@@ -106,7 +107,55 @@ function ensureDirectory(string $path): void
     }
 }
 
-function writeManifest(string $path, int $totalRows, string $hash, string $branch): void
+function calculateDataHash(string $dataPath): string
+{
+    $dataPath = rtrim($dataPath, '/\\');
+
+    if (! is_dir($dataPath)) {
+        throw new RuntimeException("Data directory not found: {$dataPath}");
+    }
+
+    $fingerprints = [];
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dataPath, FilesystemIterator::SKIP_DOTS)
+    );
+
+    foreach ($iterator as $file) {
+        if (! $file->isFile() || strtolower($file->getExtension()) !== 'php') {
+            continue;
+        }
+
+        $relative = str_replace('\\', '/', substr($file->getPathname(), strlen($dataPath) + 1));
+
+        // version.php dilewati: isinya justru turunan dari hash ini.
+        if ($relative === 'version.php') {
+            continue;
+        }
+
+        $contents = file_get_contents($file->getPathname());
+        if ($contents === false) {
+            throw new RuntimeException('Unable to read dataset file: '.$file->getPathname());
+        }
+
+        // Line ending dinormalkan supaya hash identik di checkout Windows (CRLF)
+        // maupun runner Linux (LF). Ganti CRLF bukan perubahan data.
+        $contents = str_replace(["\r\n", "\r"], "\n", $contents);
+
+        $fingerprints[$relative] = hash('sha256', $contents);
+    }
+
+    ksort($fingerprints);
+
+    $payload = '';
+    foreach ($fingerprints as $relative => $fileHash) {
+        $payload .= $relative.':'.$fileHash."\n";
+    }
+
+    return hash('sha256', $payload);
+}
+
+function writeManifest(string $path, int $totalRows, string $hash, string $branch, string $dataHash): void
 {
     $directory = dirname($path);
     if (! is_dir($directory) && ! mkdir($directory, 0755, true) && ! is_dir($directory)) {
@@ -117,7 +166,7 @@ function writeManifest(string $path, int $totalRows, string $hash, string $branc
         ."    'version' => '".gmdate('Y.m.d')."',\n"
         ."    'data_date' => '".gmdate('Y-m-d')."',\n"
         ."    'source_hash' => '{$hash}',\n"
-        ."    'generated_at' => '".gmdate('c')."',\n"
+        ."    'data_hash' => '{$dataHash}',\n"
         ."    'source' => [\n"
         ."        'repo' => 'aliziodev/laravel-wilayah',\n"
         ."        'branch' => '{$branch}',\n"

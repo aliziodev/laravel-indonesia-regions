@@ -18,6 +18,8 @@ $newHash = shortHash($current['source']['hash'] ?? $current['source_hash'] ?? 'u
 $oldTotal = (int) ($previous['counts']['total'] ?? 0);
 $newTotal = (int) ($current['counts']['total'] ?? 0);
 $delta = $newTotal - $oldTotal;
+$oldDataHash = shortHash($previous['data_hash'] ?? 'unknown');
+$newDataHash = shortHash($current['data_hash'] ?? 'unknown');
 
 $entry = implode("\n", [
     "## [{$newPackageVersion}] — {$releaseDate}",
@@ -28,6 +30,7 @@ $entry = implode("\n", [
     '',
     '### Statistik',
     '- Total rows: '.$oldTotal.' -> '.$newTotal.' ('.formatDelta($delta).')',
+    "- Data fingerprint: `{$oldDataHash}` -> `{$newDataHash}`",
     '',
 ]);
 
@@ -42,6 +45,7 @@ $releaseNotes = implode("\n", [
     '',
     '### Statistik Data',
     '- Total rows: '.$oldTotal.' -> '.$newTotal.' ('.formatDelta($delta).')',
+    "- Data fingerprint: `{$oldDataHash}` -> `{$newDataHash}`",
     '',
     '### Update di project Anda',
     '```bash',
